@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Авторизация</title>
+</head>
+<body>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <form id="login" method="post" action=".">
+        {% csrf_token %}
+        <span id="login-msg"></span>
+        {{ form.as_p }}
+        <button type="submit">Войти</button>
+    </form>
+    <script>
+        $('#login').on('submit', function(event) {
+            event.preventDefault();
+
+            $('#login-msg').text("");
+
+            $.ajax({
+                type: 'POST',
+                url: '/login',
+                data: $(this).serialize(),
+                success: function(response) {
+                    localStorage.setItem('accessToken', response.data.access);
+                    localStorage.setItem('refreshToken', response.data.refresh);
+                    window.location.href = '/';
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON;
+                    $('#id_password')[0].value = "";
+                    if (response && response.status === "error") {
+                        $('#login-msg').text(response.data);
+                    } else {
+                        $('#login-msg').text('Произошла ошибка.');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
