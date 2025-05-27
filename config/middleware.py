@@ -7,6 +7,8 @@ class WrapResponseMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
+        if '/admin' in request.path:
+            return response
         if any((
                 '/account/' in request.path,
                 '/source/' in request.path,
