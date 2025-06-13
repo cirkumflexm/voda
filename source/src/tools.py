@@ -3,10 +3,11 @@ from typing import TypeVar, Callable
 from dateutil.relativedelta import relativedelta
 
 from django.utils import timezone
+from django.db.models import QuerySet
 
 from account.models import User
 from payment.models import Payment
-from source.models import *
+from source.models import TariffPlan, ServiceArchive
 
 
 UserId = TypeVar("UserId", bound=int)
@@ -69,12 +70,15 @@ def _pay_service(user: User) -> None:
 
 def _crediting_funds(user: User, quantity: float) -> None:
     user.balance += Decimal(quantity)
+
+    _pay_service(user)
+
     QuerySet(Payment).create(
         user=user,
         quantity=quantity,
         datetime=timezone.now()
     )
-    _service_activation(user)
+
     user.save(force_update=('balance', 'start_datetime_pp', 'end_datetime_pp', 'ws_status'))
 
 

@@ -1,13 +1,14 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from drf_yasg.utils import swagger_auto_schema
 from rest_framework import viewsets
+from rest_framework import generics
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
+from django.db.models import QuerySet
 
 from account.models import User
 
-from .serializers import UserSerializer, TariffPlanSerializer
-from .models import *
+from .serializers import UserSerializer, TariffPlanSerializer, DataSerializer
+from .models import TariffPlan
 
 
 class PermissionGroup(BasePermission):
@@ -17,16 +18,21 @@ class PermissionGroup(BasePermission):
 
 class UserPermissionGroup(PermissionGroup):
     def has_object_permission(self, request, view, obj) -> bool:
-        if request.method != "GET":
-            if not request.user.is_superuser:
-                if obj.groups.filter(id__in=(1, 2)).exists():
-                    raise PermissionDenied()
+        if request.method != "GET" and not request.user.is_superuser:
+            if obj.groups.filter(id__in=(1, 2)).exists():
+                raise PermissionDenied()
         return True
 
 
 class TariffPlanPermissionGroup(PermissionGroup):
     def has_object_permission(self, request, view, obj) -> bool:
         return request.method in ["GET", "POST", "PUT"]
+
+
+class DataPermissionGroup(PermissionGroup):
+    def has_object_permission(self, request, view, obj) -> bool:
+        print(view, obj)
+        return "GET" == request.method
 
 
 @extend_schema_view(
@@ -107,3 +113,9 @@ class TariffPlanView(viewsets.ModelViewSet):
             return [request.user.tariff_plan] if __tariff_plan else []
         return super().get_queryset()
 
+
+@extend_schema(summary="Получить данные пользователя")
+class DataView(generics.RetrieveAPIView):
+    queryset = QuerySet(User).filter(groups__id=3)
+    serializer_class = DataSerializer
+    lookup_field = "personal_account"

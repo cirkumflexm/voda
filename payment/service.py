@@ -3,9 +3,6 @@ from yookassa.domain.exceptions import ApiError
 from yookassa.domain.common.user_agent import Version
 
 from os import getenv
-from dotenv import load_dotenv
-
-load_dotenv()
 
 
 __all__ = [

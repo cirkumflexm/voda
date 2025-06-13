@@ -13,6 +13,11 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+from os import getenv
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +27,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82'
+SECRET_KEY = getenv("SECRET_KEY_DJANGO")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['v.zesu.ru']
+if DEBUG:
+    ALLOWED_HOSTS = ['v.zesu.ru', '95.183.8.42']
+else:
+    ALLOWED_HOSTS = ['v.zesu.ru']
 
 
 # Application definition
@@ -202,6 +210,8 @@ SPECTACULAR_SETTINGS = {
         Operators:
             - "TestOp1"
             - "TestOp2"
+            - "User1"
+            - "User2"
         Password - "Password"
     """,
     "SERVE_INCLUDE_SCHEMA": False,

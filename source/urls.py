@@ -4,13 +4,14 @@ from rest_framework.routers import DefaultRouter
 
 from django.urls import path, include
 
-from .views import *
+from .views import UserView, TariffPlanView, DataView
 
 
-router = DefaultRouter()
-router.register('users', UserView)
-router.register('tariffs', TariffPlanView)
+router_private = DefaultRouter()
+router_private.register('users', UserView)
+router_private.register('tariffs', TariffPlanView)
 
 urlpatterns = [
-    path('', include(router.urls))
+    path('', include(router_private.urls)),
+    path('info/<slug:personal_account>', DataView.as_view()),
 ]

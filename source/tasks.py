@@ -4,7 +4,8 @@ import logging
 from django.utils import timezone
 
 from .src.tools import pay_service, CustomException, service_deactivation
-from .models import *
+from django.db.models import QuerySet
+from account.models import User
 
 
 logger = logging.getLogger(__name__)

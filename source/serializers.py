@@ -8,6 +8,7 @@ from account.models import User
 
 from .models import *
 
+
 class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -56,4 +57,10 @@ class TariffPlanSerializer(serializers.ModelSerializer):
                 self.Meta.read_only_fields = ['id', 'name', 'price', 'unit_measurement']
             except AssertionError:
                 self.Meta.read_only_fields = []
-        pass
+
+
+class DataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+        # read_only_fields = fields
