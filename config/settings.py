@@ -210,8 +210,6 @@ SPECTACULAR_SETTINGS = {
         Operators:
             - "TestOp1"
             - "TestOp2"
-            - "User1"
-            - "User2"
         Password - "Password"
     """,
     "SERVE_INCLUDE_SCHEMA": False,
@@ -221,3 +219,6 @@ SPECTACULAR_SETTINGS = {
         r"^/source/"
     ]
 }
+
+CELERY_BROKER_URL = 'redis://localhost:6379'
+

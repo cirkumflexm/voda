@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework import generics
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
 from django.db.models import QuerySet
@@ -9,6 +10,11 @@ from account.models import User
 
 from .serializers import UserSerializer, TariffPlanSerializer, DataSerializer
 from .models import TariffPlan
+
+
+class Pagination(LimitOffsetPagination):
+    max_limit = 150
+    default_limit = 30
 
 
 class PermissionGroup(BasePermission):
@@ -53,6 +59,7 @@ class UserView(viewsets.ModelViewSet):
     queryset = QuerySet(User).filter(groups__id=3).select_related("tariff_plan").all()
     serializer_class = UserSerializer
     permission_classes = [UserPermissionGroup, IsAuthenticated]
+    pagination_class = Pagination
 
     def __init__(self, **kw) -> None:
         super().__init__(**kw)
@@ -92,6 +99,7 @@ class TariffPlanView(viewsets.ModelViewSet):
     queryset = QuerySet(TariffPlan).all()
     serializer_class = TariffPlanSerializer
     permission_classes = [TariffPlanPermissionGroup, IsAuthenticated]
+    pagination_class = Pagination
 
     def __init__(self, **kw) -> None:
         super().__init__(**kw)

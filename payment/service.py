@@ -35,8 +35,8 @@ def create_payment(
             "receipt": {
                 "customer": {
                     "full_name": full_name,
-                    "email": user_email,
-                    **({"phone": user_phone} if user_phone else {})
+                    "phone": user_phone,
+                    **({"email": user_email} if user_email else {})
                 },
                 "items": [
                     {
@@ -86,7 +86,8 @@ def find_payment(*, payment_id: str) -> dict:
     return {
         "response_data": {
             "status": payment.status
-        }
+        },
+        "metadata": payment.metadata
     }
 
 
