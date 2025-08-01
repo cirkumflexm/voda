@@ -9,6 +9,8 @@ __all__ = ["User"]
 
 from django.db.models import QuerySet
 
+from device.models import Encoard
+
 
 class User(AbstractUser):
     personal_account = models.CharField(verbose_name="Лс счет", null=True, unique=True)
@@ -22,12 +24,11 @@ class User(AbstractUser):
     end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", null=True)
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
 
-    encoard: QuerySet
+    encoarded: Encoard
 
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
-
 
     def __str__(self) -> str:
         return self.username

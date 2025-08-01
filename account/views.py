@@ -38,6 +38,7 @@ class LoginAPIView(APIView):
         phone = sub(PHONE_COMPILE, "", _login)
         phone = int(phone) if phone else -1
         user = User.objects.filter(
+            Q(username=_login) |
             Q(personal_account=_login) |
             Q(email=_login) |
             Q(phone=phone)

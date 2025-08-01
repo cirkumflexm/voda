@@ -6,6 +6,7 @@ from django.utils import timezone
 from django.db.models import QuerySet
 
 from account.models import User
+from mqtt_executor.common import set_ws_status_on
 from payment.models import Payment
 from source.models import TariffPlan, ServiceArchive
 
@@ -52,7 +53,7 @@ class MainAbs:
             end_datetime_pp=self.user.end_datetime_pp,
             tariff_plan=self.user.tariff_plan
         )
-        self.user.ws_status = True
+        set_ws_status_on(self.user)
 
     def extend(self) -> None:
         self.user.balance -= self.user.tariff_plan.price
