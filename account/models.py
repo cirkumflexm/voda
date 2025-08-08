@@ -7,9 +7,8 @@ from django.db import models
 
 __all__ = ["User"]
 
-from django.db.models import QuerySet
-
-from device.models import Encoard
+from device.models import Definition
+from tariff.models import TariffPlan
 
 
 class User(AbstractUser):
@@ -19,12 +18,13 @@ class User(AbstractUser):
     fias = models.CharField(verbose_name="ФИАС", max_length=47, default="")
     balance = models.DecimalField(verbose_name="Баланс", max_digits=15, decimal_places=2, default=0.)
     ws_status = models.BooleanField(verbose_name="Статус подачи воды", default=False)
-    tariff_plan = models.ForeignKey("source.TariffPlan", verbose_name="Тариф", on_delete=models.PROTECT, null=True)
+    tariff_plan = models.ForeignKey("tariff.TariffPlan", verbose_name="Тариф", on_delete=models.PROTECT, null=True)
     start_datetime_pp = models.DateTimeField(verbose_name="Дата&Время начала оплаченного периода", null=True)
     end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", null=True)
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
 
-    encoarded: Encoard
+    definitions: Definition
+    tariff_choices: TariffPlan
 
     class Meta:
         verbose_name = "Пользователь"

@@ -1,14 +1,15 @@
 
 import logging
+from base64 import b64encode
 
 from os import getenv
+from secrets import token_bytes
 from time import sleep
+from typing import Optional
+
 from celery import Task
 from smsaero import SmsAero
 from dotenv import load_dotenv
-from string import ascii_letters, digits, ascii_uppercase
-from django.contrib.auth.hashers import make_password
-from random import choices, shuffle
 from account.models import User
 
 from config.celery import app
@@ -31,21 +32,21 @@ MESSAGE = """
 create_account: Task
 
 @app.task()
-def create_account(phone: int, email: str, first_name: str, last_name: str) -> None:
+def create_account(
+        *, phone: int, email: str,
+        first_name: str, last_name: str,
+        apartment: str, fias: str, address: str,
+        tariff_plan: Optional[int]
+) -> None:
     api = SmsAero(
         SMSAERO_EMAIL, SMSAERO_API_KEY,
         test_mode=bool(int(SMSAERO_TEST_MODE))
     )
-    __letters = choices(ascii_letters, k=4)
-    __uppercase = choices(ascii_uppercase, k=4)
-    __digits = choices(digits, k=4)
-    __password = __letters + __uppercase + __digits + [*'%@$%^*']
-    shuffle(__password)
-    password = "".join(__password[:12])
+    password = b64encode(token_bytes(9)).decode()
     count = User.objects.count() + 1
     personal_account = f'{count + int(START_RANGE_PERSONAL_ID):0>12}'
     message = MESSAGE % (first_name, password)
-    LOGGER.info(MESSAGE % (first_name, "*" * 12))
+    LOGGER.info(MESSAGE % (first_name, "*" * 9))
     result = api.send_sms(phone, message)
     while True:
         sleep(10)
@@ -60,7 +61,10 @@ def create_account(phone: int, email: str, first_name: str, last_name: str) -> N
                     phone=phone,
                     last_name=last_name,
                     first_name=first_name,
-                    tariff_plan_id=1
+                    fias=fias,
+                    address=address,
+                    apartment=apartment,
+                    tariff_plan_id=tariff_plan
                 )
                 user.groups.add(3)
                 break

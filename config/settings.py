@@ -13,11 +13,6 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
-from os import getenv
-from dotenv import load_dotenv
-
-load_dotenv()
-
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,16 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = getenv("SECRET_KEY_DJANGO")
+SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-if DEBUG:
-    ALLOWED_HOSTS = ['v.zesu.ru', '95.183.8.42']
-else:
-    ALLOWED_HOSTS = ['v.zesu.ru']
-
+ALLOWED_HOSTS = ['v.zesu.ru']
 
 # Application definition
 
@@ -53,7 +44,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'drf_spectacular',
     'account',
-    'source',
+    'tariff',
     'payment',
     'device'
 ]
@@ -61,7 +52,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    "django.middleware.common.CommonMiddleware",
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
@@ -93,16 +84,15 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-
 DATABASES = {
-     'default': {
-         'ENGINE': 'django.db.backends.postgresql',
-         'NAME': 'project_db',
-         'USER': 'project_user',
-         'PASSWORD': 'vm89DDF77GDDD4a9B9f0',
-         'HOST': '127.0.0.1',
-         'PORT': '5432',
-     }
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'project_db',
+        'USER': 'project_user',
+        'PASSWORD': 'vm89DDF77GDDD4a9B9f0',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
+    }
 }
 
 
@@ -184,7 +174,10 @@ REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication'
-    ]
+    ],
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    # 'DEFAULT_LIMIT': 30,
+    # 'MAX_LIMIT': 150
 }
 
 SIMPLE_JWT = {
@@ -207,12 +200,17 @@ CACHES = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "ВСЕ API",
     "VERSION": "0.0.1",
-    "DESCRIPTION": """
-        Operators:
-            - "TestOp1"
-            - "TestOp2"
-        Password - "Password"
-    """,
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {},
+    "COMPONENT_SPLIT_REQUEST": True,
+    "EXCLUDE_PATHS": [
+        r"^/source/"
+    ]
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ВСЕ API",
+    "VERSION": "0.0.1",
     "SERVE_INCLUDE_SCHEMA": False,
     "SWAGGER_UI_SETTINGS": {},
     "COMPONENT_SPLIT_REQUEST": True,
@@ -222,4 +220,5 @@ SPECTACULAR_SETTINGS = {
 }
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
+
 

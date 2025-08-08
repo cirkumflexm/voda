@@ -4,7 +4,7 @@ import paho.mqtt.client as mqtt
 from django.db.models import QuerySet
 
 from account.models import User
-from device.models import Device, Encoard
+from device.models import Device, Definition
 
 LOGGER = logging.getLogger("mqtt.common")
 
@@ -14,7 +14,7 @@ CLIENT.username_pw_set("u_XXKWLD", "HpaltpYw")
 
 
 def set_ws_status_on(user: User) -> None:
-    encoard = QuerySet(Encoard) \
+    encoard = QuerySet(Definition) \
                 .select_related("device") \
                 .select_related("user") \
                 .filter(user=user, device__func="SET") \

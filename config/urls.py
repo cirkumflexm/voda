@@ -1,8 +1,8 @@
 """
-URL configuration for config project.
+URL configuration for project project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
+    https://docs.djangoproject.com/en/5.2/topics/http/urls/
 Examples:
 Function views
     1. Add an import:  from my_app import views
@@ -14,19 +14,17 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-
 from django.contrib import admin
 
 from django.urls import path, include
 from drf_spectacular.views import SpectacularSwaggerView, SpectacularAPIView
 
-from source import views
 
 urlpatterns = [
+    path('admin/', admin.site.urls),
     path('schema/', SpectacularAPIView.as_view(), name='schema'),
     path('', SpectacularSwaggerView.as_view(url_name='schema'), name='docs'),
-    path('admin/', admin.site.urls),
-    path('source/', include(('source.urls', 'source')), name="source"),
+    path('tariff/', include(('tariff.urls', 'tariff')), name="tariff"),
     path('payment/', include(('payment.urls', 'payment')), name="payment"),
     path('account/', include(('account.urls', 'account')), name="account"),
     path('device/', include(('device.urls', 'device')), name="device"),

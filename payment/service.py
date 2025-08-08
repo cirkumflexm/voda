@@ -29,9 +29,6 @@ def create_payment(
                 "currency": currency
             },
             "save_payment_method": True,
-            "payment_method_data": {
-                "type": "bank_card"
-            },
             "receipt": {
                 "customer": {
                     "full_name": full_name,
@@ -52,9 +49,9 @@ def create_payment(
                 ]
             },
             "confirmation": {
-                "type": "redirect",
-                "return_url": return_url
+                "type": "embedded"
             },
+            "capture": True,
             "description": f"Заказ №{num}",
             "metadata": {
                 "user_id": user_id,
@@ -75,7 +72,8 @@ def create_payment(
             },
             "confirmation": {
                 "type": payment.confirmation["type"],
-                "confirmation_url": payment.confirmation["confirmation_url"],
+                "confirmation_token": payment.confirmation["confirmation_token"]
+                # "confirmation_url": payment.confirmation["confirmation_url"],
             }
         }
     }

@@ -27,7 +27,7 @@ class Device(models.Model):
     )
 
 
-class Encoard(models.Model):
+class Definition(models.Model):
     device = models.ForeignKey(
         "Device",
         on_delete=models.CASCADE
@@ -39,7 +39,6 @@ class Encoard(models.Model):
     user = models.ForeignKey(
         "account.User",
         on_delete=models.CASCADE,
-        related_name="encoarded",
+        related_name="definitions",
         default=0
     )
-

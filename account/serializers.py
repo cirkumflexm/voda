@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from account.models import User
+from tariff.serializers import TariffPlanSerializer
 
 
 class Authorization(serializers.ModelSerializer):
@@ -28,3 +29,34 @@ class RegistrationResponseOk(serializers.Serializer):
 
 class Logout(serializers.Serializer):
     refresh = serializers.CharField()
+
+
+class UserSerializerGet(serializers.ModelSerializer):
+    tariff_plan = TariffPlanSerializer()
+
+    class Meta:
+       model = User
+
+       fields = [
+           'id', 'first_name', 'last_name', 'phone', 'email', 'username', 'address', 'apartment', 'fias',
+           'balance', 'ws_status', 'tariff_plan', 'start_datetime_pp', 'end_datetime_pp', 'personal_account'
+       ]
+       read_only_fields = ['username', 'balance', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'personal_account']
+
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+       model = User
+
+       fields = [
+           'id', 'first_name', 'last_name', 'phone', 'email', 'address', 'apartment', 'fias',
+           'balance', 'ws_status', 'tariff_plan', 'start_datetime_pp', 'end_datetime_pp', 'personal_account'
+       ]
+       read_only_fields = ['username', 'personal_account', 'balance', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+
+
+class DataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+        read_only_fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
