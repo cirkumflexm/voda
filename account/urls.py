@@ -13,5 +13,5 @@ urlpatterns = [
     path('logout/', LogoutAPIView.as_view(), name="logout"),
     path('registration/', RegistrationAPIView.as_view(), name="registration"),
     path('', include(router_private.urls), name='users'),
-    path('info/<slug:pa>', DataView.as_view(), name='info')
+    path('info/<slug:personal_account>', DataView.as_view(), name='info')
 ]

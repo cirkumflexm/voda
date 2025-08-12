@@ -1,14 +1,12 @@
-from django.db.models import Q
+
 from rest_framework import viewsets
-from rest_framework import generics
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
 
 from account.models import User
-from .serializers import DeviceSerializer, DefinitionSerializer, UserGroupDefinitionSerializer, \
-    OtherDefinitionSerializer
 from device.models import Device, Definition
+from .serializers import DeviceSerializer, UserGroupDefinitionSerializer, \
+    DefinitionSerializerGet, DefinitionSerializerSet
 
 
 class Pagination(LimitOffsetPagination):
@@ -26,17 +24,25 @@ class DeviceView(viewsets.ModelViewSet):
     serializer_class = DeviceSerializer
     permission_classes = [IsAuthenticated, PermissionGroup]
     pagination_class = Pagination
-    http_method_names = ['get', 'post', 'patch', 'head', 'options']
+    http_method_names = ['get', 'post', 'patch']
 
 
 class DefinitionView(viewsets.ModelViewSet):
-    queryset = User.objects.filter(groups__id=3).order_by('id')
+    queryset = Definition.objects \
+        .select_related('user', 'device').order_by('id')
     permission_classes = [IsAuthenticated, PermissionGroup]
     pagination_class = Pagination
-    http_method_names = ['get', 'post', 'patch', 'head', 'options']
+    http_method_names = ['get', 'post', 'patch']
 
     def get_serializer_class(self):
-        if self.request.method == 'GET':
+        if self.action == 'list':
             return UserGroupDefinitionSerializer
+        elif self.action == 'retrieve':
+            return DefinitionSerializerGet
         else:
-            return OtherDefinitionSerializer
+            return DefinitionSerializerSet
+
+    def get_queryset(self):
+        if self.action == 'list':
+            return User.objects.filter(groups__id=3).order_by('id')
+        return super().get_queryset()

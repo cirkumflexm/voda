@@ -3,6 +3,9 @@ from yookassa.domain.exceptions import ApiError
 from yookassa.domain.common.user_agent import Version
 
 from os import getenv
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 __all__ = [
@@ -73,7 +76,6 @@ def create_payment(
             "confirmation": {
                 "type": payment.confirmation["type"],
                 "confirmation_token": payment.confirmation["confirmation_token"]
-                # "confirmation_url": payment.confirmation["confirmation_url"],
             }
         }
     }

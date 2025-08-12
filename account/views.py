@@ -110,6 +110,25 @@ class RegistrationAPIView(APIView):
                 apartment=apartment, fias=fias,
                 address=address, tariff_plan=tariff_plan
             )
+
+            # --------------------
+
+            personal_account = f"{User.objects.count()+4324}"
+            user = User.objects.create_user(
+                username=personal_account,
+                email=email,
+                password="test",
+                personal_account=personal_account,
+                phone=phone,
+                last_name=last_name,
+                first_name=first_name,
+                fias=fias,
+                address=address,
+                apartment=apartment,
+                tariff_plan_id=tariff_plan
+            )
+            user.groups.add(3)
+            user.save()
         except Exception as ex:
             print(ex)
             return Response("Введите номер телефона", status=400)
@@ -176,7 +195,7 @@ class UserView(viewsets.ModelViewSet):
         """
 
     def create(self, request, *args, **kw) -> Response:
-        return RegistrationAPIView.post(request)
+        return RegistrationAPIView.post(self, request)
 
     def get_queryset(self):
         request = self.__dict__.get("request")
@@ -189,10 +208,6 @@ class UserView(viewsets.ModelViewSet):
             return UserSerializerGet
         else:
             return UserSerializer
-
-    def partial_update(self, request, *args, **kw) -> Response:
-        print(request.data, args, kw)
-        return super().partial_update(request, *args, **kw)
 
 
 @extend_schema(summary="Получить данные пользователя")

@@ -1,6 +1,8 @@
 
 from rest_framework import serializers
 
+from tariff.serializers import TariffPlanSerializer
+
 
 class CheckRequest(serializers.Serializer):
     payment_id = serializers.CharField()
@@ -42,6 +44,7 @@ class CreateResponse(serializers.Serializer):
     created_at = serializers.CharField()
     amount = Amount()
     confirmation = Confirmation()
+    tariff = TariffPlanSerializer()
 
     class Meta:
-        fields = ["id", "description", "created_at", "amount", "confirmation"]
+        fields = ["id", "description", "created_at", "amount", "confirmation", "name", "price", "unit_measurement"]

@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from account.models import User
+from account.serializers import UserSerializer
 from .models import *
 
 
@@ -12,16 +13,17 @@ class DeviceSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
-class DefinitionSerializer(serializers.ModelSerializer):
-    device = DeviceSerializer()
+class DefinitionSerializerList(serializers.ModelSerializer):
+    device = DeviceSerializer(read_only=True)
 
     class Meta:
         model = Definition
         fields = ["id", "device", "number"]
-        read_only_fields = ["id", "device"]
-
+        read_only_fields = ["id", "device", "number"]
+        
+        
 class UserGroupDefinitionSerializer(serializers.ModelSerializer):
-    definitions = DefinitionSerializer(many=True, read_only=True)
+    definitions = DefinitionSerializerList(many=True, read_only=True)
 
     class Meta:
         model = User
@@ -39,8 +41,18 @@ class UserGroupDefinitionSerializer(serializers.ModelSerializer):
         ]
 
 
-class OtherDefinitionSerializer(serializers.ModelSerializer):
+class DefinitionSerializerGet(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    device = DeviceSerializer(read_only=True)
+
     class Meta:
         model = Definition
-        fields = ['device', 'number', 'user']
+        fields = ['id', 'device', 'number', 'user']
+        read_only_fields = ['device', 'number', 'user']
 
+
+class DefinitionSerializerSet(serializers.ModelSerializer):
+    class Meta:
+        model = Definition
+        fields = ['id', 'device', 'number', 'user']
+        read_only_fields = ['id']

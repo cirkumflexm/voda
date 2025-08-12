@@ -9,6 +9,8 @@ from rest_framework.views import APIView
 
 from account.models import User
 from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse
+from tariff.models import TariffPlan
+from tariff.serializers import TariffPlanSerializer
 from .models import Payment
 from .service import *
 from .tasks import check
@@ -42,7 +44,7 @@ class Create(APIView):
         }
     )
     def post(self, request) -> Response:
-        request.user = QuerySet(User).filter(personal_account=request.data["pa"]).first()
+        request.user = User.objects.filter(personal_account=request.data["pa"]).first()
         if not request.user:
             return Response("Пользователь не найден.", status=400)
         if not request.user.groups.filter(id=3).exists():
@@ -50,6 +52,8 @@ class Create(APIView):
         return self.create(request)
 
     def create(self, request) -> Response:
+        request.user.tariff_plan: TariffPlan
+
         try:
             __payment_id = QuerySet(Payment).filter(user=request.user).count()
             __response = create_payment(
@@ -66,6 +70,10 @@ class Create(APIView):
             )
             __result = __response["response_data"]
             check.delay(__result['id'], request.user.id)
+            __result["tariff"] = TariffPlanSerializer(request.user.tariff_plan, context=request).data
+            del __result["tariff"]['id']
+            del __result["tariff"]['owner']
+            del __result["tariff"]['archive']
             return Response(__result)
         except ApiError as ex:
             return Response(
