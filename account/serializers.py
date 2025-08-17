@@ -32,27 +32,51 @@ class Logout(serializers.Serializer):
 
 
 class UserSerializerGet(serializers.ModelSerializer):
-    tariff_plan = TariffPlanSerializer()
+    tariff_plan = TariffPlanSerializer(read_only=True)
+    next_tariff_plan = TariffPlanSerializer(read_only=True)
 
     class Meta:
        model = User
 
        fields = [
            'id', 'first_name', 'last_name', 'phone', 'email', 'username', 'address', 'apartment', 'fias',
-           'balance', 'ws_status', 'tariff_plan', 'start_datetime_pp', 'end_datetime_pp', 'personal_account'
+           'balance', 'ws_status', 'tariff_plan', 'next_tariff_plan',
+           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
        ]
-       read_only_fields = ['username', 'balance', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'personal_account']
+       read_only_fields = [
+           'username', 'balance', 'ws_status',
+           'start_datetime_pp', 'end_datetime_pp',
+           'personal_account', 'is_new'
+       ]
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializerPost(serializers.ModelSerializer):
     class Meta:
        model = User
 
        fields = [
            'id', 'first_name', 'last_name', 'phone', 'email', 'address', 'apartment', 'fias',
-           'balance', 'ws_status', 'tariff_plan', 'start_datetime_pp', 'end_datetime_pp', 'personal_account'
+           'balance', 'ws_status', 'tariff_plan',
+           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
        ]
-       read_only_fields = ['username', 'personal_account', 'balance', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+       read_only_fields = [
+           'username', 'personal_account', 'balance',
+           'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new'
+       ]
+
+class UserSerializerPatch(serializers.ModelSerializer):
+    class Meta:
+       model = User
+
+       fields = [
+           'id', 'first_name', 'last_name', 'phone', 'email', 'address', 'apartment', 'fias',
+           'balance', 'ws_status', 'tariff_plan', 'next_tariff_plan',
+           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
+       ]
+       read_only_fields = [
+           'username', 'personal_account', 'balance',
+           'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new'
+       ]
 
 
 class DataSerializer(serializers.ModelSerializer):

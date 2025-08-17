@@ -18,10 +18,18 @@ class User(AbstractUser):
     fias = models.CharField(verbose_name="ФИАС", max_length=47, default="")
     balance = models.DecimalField(verbose_name="Баланс", max_digits=15, decimal_places=2, default=0.)
     ws_status = models.BooleanField(verbose_name="Статус подачи воды", default=False)
-    tariff_plan = models.ForeignKey("tariff.TariffPlan", verbose_name="Тариф", on_delete=models.PROTECT, null=True)
-    start_datetime_pp = models.DateTimeField(verbose_name="Дата&Время начала оплаченного периода", null=True)
-    end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", null=True)
+    tariff_plan = models.ForeignKey(
+        "tariff.TariffPlan", verbose_name="Тариф", blank=True,
+        on_delete=models.PROTECT, null=True, related_name="tariff_planes"
+    )
+    next_tariff_plan = models.ForeignKey(
+        "tariff.TariffPlan", verbose_name="Следующий тариф", blank=True,
+        on_delete=models.SET_NULL, null=True, related_name="next_tariff_planes"
+    )
+    start_datetime_pp = models.DateTimeField(verbose_name="Дата&Время начала оплаченного периода", blank=True, null=True)
+    end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", blank=True, null=True)
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
+    is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
 
     definitions: Definition
     tariff_choices: TariffPlan

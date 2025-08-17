@@ -17,7 +17,8 @@ from re import sub, compile
 from account.models import User
 from account.tasks import create_account
 from account.serializers import Authorization, AuthorizationResponseOk, Logout, \
-    Registration, RegistrationResponseOk, DataSerializer, UserSerializer, UserSerializerGet
+    Registration, RegistrationResponseOk, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch
+from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
 
@@ -88,50 +89,47 @@ class RegistrationAPIView(APIView):
         }
     )
     def post(self, request) -> Response:
-        try:
-            first_name = request.data.get('first_name', '')
-            last_name = request.data.get('last_name', '')
-            email = request.data.get('email', '')
-            phone = request.data.get('phone', '')
-            apartment = request.data.get('apartment')
-            fias = request.data.get('fias')
-            tariff_plan = request.data.get('tariff_plan')
-            address = request.data.get('address')
-            if not (first_name and last_name and phone):
-                return Response("Данные введены некорректно.", status=400)
-            phone = sub(PHONE_COMPILE, '', phone)
-            if User.objects.filter(phone=int(phone)).exists():
-                return Response("Номер уже зарегистрирован.", status=400)
-            elif email and User.objects.filter(email=email).exists():
-                return Response("Почта уже зарегистрирована.", status=400)
-            create_account.delay(
-                phone=int(phone), email=email,
-                first_name=first_name, last_name=last_name,
-                apartment=apartment, fias=fias,
-                address=address, tariff_plan=tariff_plan
-            )
+        first_name = request.data.get('first_name', '')
+        last_name = request.data.get('last_name', '')
+        email = request.data.get('email', '')
+        phone = request.data.get('phone', '')
+        apartment = request.data.get('apartment')
+        fias = request.data.get('fias')
+        tariff_plan = request.data.get('tariff_plan')
+        address = request.data.get('address')
+        if not (first_name and last_name and phone):
+            return Response("Данные введены некорректно.", status=400)
+        phone = sub(PHONE_COMPILE, '', phone)
+        if User.objects.filter(phone=int(phone)).exists():
+            return Response("Номер уже зарегистрирован.", status=400)
+        elif email and User.objects.filter(email=email).exists():
+            return Response("Почта уже зарегистрирована.", status=400)
+        create_account.delay(
+            phone=int(phone), email=email,
+            first_name=first_name, last_name=last_name,
+            apartment=apartment, fias=fias,
+            address=address, tariff_plan=tariff_plan
+        )
 
-            # --------------------
+        # --------------------
 
-            personal_account = f"{User.objects.count()+4324}"
-            user = User.objects.create_user(
-                username=personal_account,
-                email=email,
-                password="test",
-                personal_account=personal_account,
-                phone=phone,
-                last_name=last_name,
-                first_name=first_name,
-                fias=fias,
-                address=address,
-                apartment=apartment,
-                tariff_plan_id=tariff_plan
-            )
-            user.groups.add(3)
-            user.save()
-        except Exception as ex:
-            print(ex)
-            return Response("Введите номер телефона", status=400)
+        personal_account = f"{User.objects.count()+4324}"
+        user = User.objects.create_user(
+            username=personal_account,
+            email=email,
+            password="test",
+            personal_account=personal_account,
+            phone=phone,
+            last_name=last_name,
+            first_name=first_name,
+            fias=fias,
+            address=address,
+            apartment=apartment,
+            tariff_plan_id=tariff_plan
+        )
+        user.groups.add(3)
+        TariffPlan.create_test_tariff_plan(user)
+        user.save()
         return Response("Ok", status=200)
 
 
@@ -206,8 +204,10 @@ class UserView(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.method == 'GET':
             return UserSerializerGet
+        elif self.action == 'partial_update':
+            return UserSerializerPatch
         else:
-            return UserSerializer
+            return UserSerializerPost
 
 
 @extend_schema(summary="Получить данные пользователя")

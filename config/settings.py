@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+from celery.schedules import crontab
 from datetime import timedelta
 from pathlib import Path
 
@@ -46,7 +47,8 @@ INSTALLED_APPS = [
     'account',
     'tariff',
     'payment',
-    'device'
+    'device',
+    'address'
 ]
 
 MIDDLEWARE = [
@@ -221,4 +223,13 @@ SPECTACULAR_SETTINGS = {
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
 
-
+CELERY_BEAT_SCHEDULE = {
+    'run-tariff-renewal-loop': {
+        'task': 'tariff.tasks.task_tariff_renewal_loop',
+        'schedule': crontab(minute='10,30'),
+    },
+    'run-tariff-activate-loop': {
+        'task': 'tariff.tasks.task_tariff_activate_loop',
+        'schedule': crontab(minute='30,50'),
+    },
+}

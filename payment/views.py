@@ -72,8 +72,6 @@ class Create(APIView):
             check.delay(__result['id'], request.user.id)
             __result["tariff"] = TariffPlanSerializer(request.user.tariff_plan, context=request).data
             del __result["tariff"]['id']
-            del __result["tariff"]['owner']
-            del __result["tariff"]['archive']
             return Response(__result)
         except ApiError as ex:
             return Response(

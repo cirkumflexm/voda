@@ -1,21 +1,18 @@
 from django.http import JsonResponse
+from rest_framework.request import Request
 
 
 class WrapResponseMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
-    def __call__(self, request):
+    def __call__(self, request: Request):
         response = self.get_response(request)
-        if '/admin' in request.path:
+        if '/' == request.path or \
+            '/schema/' in request.path or \
+            '/admin/' in request.path:
             return response
-        if any((
-                '/account/' in request.path,
-                '/source/' in request.path,
-                '/payment/' in request.path,
-        )):
-            return JsonResponse({
-                'status': 'success' if response.reason_phrase == "OK" else "error",
-                'data': response.data if hasattr(response, "data") else None
-            }, status=response.status_code)
-        return response
+        return JsonResponse({
+            'status': 'success' if response.reason_phrase == "OK" else "error",
+            'data': response.data if hasattr(response, "data") else None
+        }, status=response.status_code)

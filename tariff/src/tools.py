@@ -38,6 +38,8 @@ class BaseMain:
         )
 
     def activate(self) -> None:
+        if self.user.tariff_plan.is_test:
+            self.user.is_new = False
         self.user.balance -= self.user.tariff_plan.price
         self.user.start_datetime_pp = self.now_datetime
         self.user.end_datetime_pp = self.now_datetime + {
@@ -53,7 +55,7 @@ class BaseMain:
             end_datetime_pp=self.user.end_datetime_pp,
             tariff_plan=self.user.tariff_plan
         )
-        set_ws_status_on(self.user)
+        # set_ws_status_on(self.user)
         self.user.ws_status = True
 
     def extend(self) -> None:

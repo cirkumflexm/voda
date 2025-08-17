@@ -67,6 +67,7 @@ def create_account(
                     tariff_plan_id=tariff_plan
                 )
                 user.groups.add(3)
+                user.save()
                 break
             case 2:
                 break

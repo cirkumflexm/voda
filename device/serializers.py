@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from account.models import User
-from account.serializers import UserSerializer
+from account.serializers import UserSerializerGet
 from .models import *
 
 
@@ -42,13 +42,13 @@ class UserGroupDefinitionSerializer(serializers.ModelSerializer):
 
 
 class DefinitionSerializerGet(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
+    user = UserSerializerGet(read_only=True)
     device = DeviceSerializer(read_only=True)
 
     class Meta:
         model = Definition
         fields = ['id', 'device', 'number', 'user']
-        read_only_fields = ['device', 'number', 'user']
+        read_only_fields = ['id', 'device', 'number', 'user']
 
 
 class DefinitionSerializerSet(serializers.ModelSerializer):

@@ -1,14 +1,13 @@
-from decimal import Decimal
-
-from django.db.models import QuerySet
-
-from django.db import models
 
 __all__ = [
     "QuerySet",
     "TariffPlan",
     "ServiceArchive"
 ]
+
+from decimal import Decimal
+from django.db.models import QuerySet
+from django.db import models
 
 
 class TariffPlan(models.Model):
@@ -25,7 +24,8 @@ class TariffPlan(models.Model):
             "year": "год"
         }
     )
-    owner = models.ForeignKey('account.User', on_delete=models.CASCADE, null=True, related_name="tariff_choices")
+    owner = models.ForeignKey("account.User", on_delete=models.CASCADE, null=True, related_name="tariff_choices")
+    is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
 
     class Meta:
         verbose_name = "Тариф"
@@ -48,6 +48,18 @@ class TariffPlan(models.Model):
     def __str__(self) -> str:
         __values = ', '.join(f"{k}={getattr(self, k)}" for k in ('name', 'price'))
         return "%s(%s)" % (self.__class__.__name__, __values)
+
+    @classmethod
+    def create_test_tariff_plan(cls, user) -> None:
+        test_tariff_plan = cls(
+            name="Тестовый тариф",
+            price=99.99,
+            unit_measurement="day",
+            owner=user,
+            is_test=True
+        )
+        test_tariff_plan.save()
+        user.tariff_plan = test_tariff_plan
 
 
 class ServiceArchive(models.Model):

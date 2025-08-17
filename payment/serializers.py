@@ -44,7 +44,7 @@ class CreateResponse(serializers.Serializer):
     created_at = serializers.CharField()
     amount = Amount()
     confirmation = Confirmation()
-    tariff = TariffPlanSerializer()
+    tariff = TariffPlanSerializer(read_only=True)
 
     class Meta:
         fields = ["id", "description", "created_at", "amount", "confirmation", "name", "price", "unit_measurement"]
