@@ -53,7 +53,7 @@ class TariffPlan(models.Model):
     def create_test_tariff_plan(cls, user) -> None:
         test_tariff_plan = cls(
             name="Тестовый тариф",
-            price=99.99,
+            price=1.00,
             unit_measurement="day",
             owner=user,
             is_test=True

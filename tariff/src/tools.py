@@ -14,8 +14,9 @@ from tariff.models import TariffPlan, ServiceArchive
 UserId = TypeVar("UserId", bound=int)
 
 
-class CustomException(Exception):
-    pass
+class CustomException(AssertionError):
+    def __str__(self) -> None:
+        return self.args[1]
 
 
 NOT_ENOUGH_FUNDS = CustomException("NotEnoughFunds", "Недостаточно средств")
@@ -55,6 +56,7 @@ class BaseMain:
             end_datetime_pp=self.user.end_datetime_pp,
             tariff_plan=self.user.tariff_plan
         )
+        self.user.tariff_plan.archive = True
         # set_ws_status_on(self.user)
         self.user.ws_status = True
 

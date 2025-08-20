@@ -1,16 +1,21 @@
+from json import dumps
 
+from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.exceptions import PermissionDenied
-from django.db.models import QuerySet
+from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 
-from .serializers import TariffPlanSerializer, TariffChoicesSerializer
+from account.models import User
+from config.permissions import OnlyOperatorOrAdmin
+from payment.views import Create
+from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
 from .models import TariffPlan
-from .src.tools import Main
+from .src.tools import Main, CustomException
 
 
 class Pagination(LimitOffsetPagination):
@@ -97,11 +102,34 @@ class TariffChoices(viewsets.ModelViewSet):
         return TariffPlan.objects.filter(owner=self.request.user, archive=False)
 
 
-class Activate(APIView):
+class Activate(GenericAPIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(summary="Активация тарифа")
     def get(self, request) -> Response:
         Main(request.user).activate()
         request.user.save()
+        request.user.tariff_plan.save()
         return Response("Ok", 200)
+
+
+class ActivationTestTariff(GenericAPIView):
+    serializer_class = ActivationTestTariffSerializer
+
+    @extend_schema(summary="Активация тестового тарифа")
+    def post(self, request: Request) -> Response | JsonResponse:
+        try:
+            serializer = ActivationTestTariffSerializer(data=request.data)
+            assert serializer.is_valid(), str(serializer.error_messages)
+            user = User.objects.get(personal_account=serializer.data['pa'])
+            assert user.is_new, "Пользователь не является новым"
+            test_tariff = user.tariff_choices.get(is_test=True, archive=False)
+            user.tariff_plan = test_tariff
+            if serializer.data.get('tariff'):
+                tariff = user.tariff_choices.filter(id=serializer.data['tariff']).first()
+                assert tariff, "Тариф не принадлежит пользователю"
+                user.next_tariff_plan = tariff
+            user.save()
+            return Create.create(user, request)
+        except AssertionError as ex:
+            return Response(ex, status=400)

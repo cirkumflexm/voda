@@ -1,3 +1,4 @@
+from celery.result import AsyncResult
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
@@ -5,19 +6,24 @@ from rest_framework import generics, viewsets
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from django.http.request import HttpRequest
 from django.contrib.auth import authenticate, logout, login
 from rest_framework_simplejwt.views import TokenRefreshView
 from re import sub, compile
 
 from account.models import User
-from account.tasks import create_account
+from account.tasks import create_account, send_sms_code
 from account.serializers import Authorization, AuthorizationResponseOk, Logout, \
-    Registration, RegistrationResponseOk, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch
+    Registration, RegistrationResponseOk, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
+    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer
+from config.celery import app
 from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
@@ -41,41 +47,73 @@ class UserPermissionGroup(PermissionGroup):
         return True
 
 
+def release(request: Request, user: User) -> Response:
+    request: HttpRequest
+    login(request, user)
+    refresh = RefreshToken.for_user(user)
+    refresh.payload.update({
+        'user_id': user.id,
+        'username': user.username
+    })
+    return Response({
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }, status=200)
+
+
+@extend_schema(
+    summary="Код подтверждения",
+    request=DoubleAuthenticationSerializer,
+    responses={
+        200: AuthorizationResponseOk()
+    }
+)
+class DoubleAuthentication(generics.GenericAPIView):
+    def post(self, request: Request) -> Response:
+        task = AsyncResult(request.data['id'], app=app)
+        if task.ready():
+            code, pa = task.result
+            if code is None or code == request.data['code']:
+                task.revoke()
+                return release(request, User.objects.get(personal_account=pa))
+        return Response("Код введен неверно.", status=403)
+
+
 class LoginAPIView(APIView):
 
     @extend_schema(
         summary="Авторизация",
         request=Authorization,
         responses={
-            200: AuthorizationResponseOk(),
-            401: OpenApiResponse()
+            200: TargetResposneSerializer()
         }
     )
     def post(self, request):
-        _login = request.data.get('login')
-        password = request.data.get('password')
-        if not (_login and password):
-            return Response("Данные введены некорректно.", status=400)
-        phone = sub(PHONE_COMPILE, "", _login)
-        phone = int(phone) if phone else -1
-        user = User.objects.filter(
-            Q(username=_login) |
-            Q(personal_account=_login) |
-            Q(email=_login) |
-            Q(phone=phone)
-        ).first()
-        if not (user and check_password(password, user.password)):
-            return Response("Неправильно введен логин или пароль.", status=401)
-        login(request, user)
-        refresh = RefreshToken.for_user(user)
-        refresh.payload.update({
-            'user_id': user.id,
-            'username': user.username
-        })
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=200)
+        serialize = Authorization(data=request.data)
+        if serialize.is_valid():
+            _login = serialize.data['login']
+            password = serialize.data['password']
+            if not (_login and password):
+                return Response("Данные введены некорректно.", status=400)
+            phone = sub(PHONE_COMPILE, "", _login)
+            phone = int(phone) if phone else -1
+            user = User.objects.filter(
+                Q(username=_login) |
+                Q(personal_account=_login) |
+                Q(email=_login) |
+                Q(phone=phone)
+            ).first()
+            if not (user and check_password(password, user.password)):
+                return Response("Неправильно введен логин или пароль.", status=401)
+            is_user = user.groups.filter(id=3).exists()
+            result = send_sms_code.delay(user.phone, is_user, user.personal_account)
+            return Response({
+                "target": serialize.data['target'],
+                "method": serialize.data['method'],
+                "id": result.id,
+            })
+        else:
+            return Response(serialize.error_messages, status=400)
 
 
 class RegistrationAPIView(APIView):
@@ -196,7 +234,7 @@ class UserView(viewsets.ModelViewSet):
         return RegistrationAPIView.post(self, request)
 
     def get_queryset(self):
-        request = self.__dict__.get("request")
+        request = self.request
         if request and request.user.groups.filter(id=3).exists():
             return [self.request.user]
         return super().get_queryset()
@@ -215,3 +253,39 @@ class DataView(generics.RetrieveAPIView):
     queryset = User.objects.filter(groups__id=3)
     serializer_class = DataSerializer
     lookup_field = "personal_account"
+
+
+
+# --------------------------
+
+from redis import Redis
+
+
+redis = Redis(db=1)
+
+
+class TempGetCodesList(APIView):
+
+    @staticmethod
+    def get(*args, **kw) -> Response:
+        result = redis.lrange("sms_list", 0, -1)
+        return Response([_.decode() for _ in result][::-1])
+
+
+class FastAuthUser(GenericAPIView):
+    serializer_class = FastAuthUserSerializer
+
+    @staticmethod
+    def post(request: Request) -> Response:
+        _login = request.data['login']
+        phone = sub(PHONE_COMPILE, "", _login)
+        phone = int(phone) if phone else -1
+        user = User.objects.filter(
+            Q(username=_login) |
+            Q(personal_account=_login) |
+            Q(email=_login) |
+            Q(phone=phone)
+        ).first()
+        if user is None:
+            return Response("Пользователь не найден", status=400)
+        return release(request, user)

@@ -3,11 +3,13 @@ import logging
 from base64 import b64encode
 
 from os import getenv
+from random import randint
 from secrets import token_bytes
 from time import sleep
 from typing import Optional
 
 from celery import Task
+from redis import Redis
 from smsaero import SmsAero
 from dotenv import load_dotenv
 from account.models import User
@@ -29,7 +31,18 @@ MESSAGE = """
 Пароль: %s
 """
 
+SMS_MESSAGE = """
+Код подтверждения: %s
+"""
+
+api = SmsAero(
+    SMSAERO_EMAIL, SMSAERO_API_KEY,
+    test_mode=bool(int(SMSAERO_TEST_MODE))
+)
+
 create_account: Task
+
+redis = Redis(db=1)
 
 @app.task()
 def create_account(
@@ -38,14 +51,12 @@ def create_account(
         apartment: str, fias: str, address: str,
         tariff_plan: Optional[int]
 ) -> None:
-    api = SmsAero(
-        SMSAERO_EMAIL, SMSAERO_API_KEY,
-        test_mode=bool(int(SMSAERO_TEST_MODE))
-    )
     password = b64encode(token_bytes(9)).decode()
     count = User.objects.count() + 1
     personal_account = f'{count + int(START_RANGE_PERSONAL_ID):0>12}'
     message = MESSAGE % (first_name, password)
+    redis.lpush("sms_list", f"Sms for {personal_account}\n{message}")
+    redis.ltrim("sms_list", 0, 9)
     LOGGER.info(MESSAGE % (first_name, "*" * 9))
     result = api.send_sms(phone, message)
     while True:
@@ -75,3 +86,15 @@ def create_account(
                 break
             case _:
                 pass
+
+
+@app.task()
+def send_sms_code(phone: str, is_user: bool, pa: str) -> tuple[str | None, str]:
+    if is_user:
+        _rand = randint(100100, 900900)
+        message = SMS_MESSAGE % f'{_rand:_}'.replace('_', '-')
+        redis.lpush("sms_list", f"Sms to {phone}\n{message}")
+        redis.ltrim("sms_list", 0, 9)
+        # api.send_sms(user.phone, message)
+        return str(_rand), pa
+    return None, pa

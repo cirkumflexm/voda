@@ -49,28 +49,27 @@ class Create(APIView):
             return Response("Пользователь не найден.", status=400)
         if not request.user.groups.filter(id=3).exists():
             return Response("", status=403)
-        return self.create(request)
+        return self.create(request.user, request)
 
-    def create(self, request) -> Response:
-        request.user.tariff_plan: TariffPlan
-
+    @staticmethod
+    def create(user, request) -> Response:
         try:
-            __payment_id = QuerySet(Payment).filter(user=request.user).count()
+            __payment_id = QuerySet(Payment).filter(user=user).count()
             __response = create_payment(
                 num=__payment_id + 1,
-                price=request.user.tariff_plan.price,
-                tariff_name=request.user.tariff_plan.name,
-                full_name=f"{request.user.last_name} {request.user.first_name}",
-                user_phone=f"+{request.user.phone}",
-                user_email=request.user.email,
-                user_id=request.user.id,
-                tariff_id=request.user.tariff_plan.id,
+                price=user.tariff_plan.price,
+                tariff_name=user.tariff_plan.name,
+                full_name=f"{user.last_name} {user.first_name}",
+                user_phone=f"+{user.phone}",
+                user_email=user.email,
+                user_id=user.id,
+                tariff_id=user.tariff_plan.id,
                 return_url="https://v.zesu.ru/",
                 currency="RUB"
             )
             __result = __response["response_data"]
-            check.delay(__result['id'], request.user.id)
-            __result["tariff"] = TariffPlanSerializer(request.user.tariff_plan, context=request).data
+            check.delay(__result['id'], user.id)
+            __result["tariff"] = TariffPlanSerializer(user.tariff_plan, context=request).data
             del __result["tariff"]['id']
             return Response(__result)
         except ApiError as ex:

@@ -7,12 +7,14 @@ from django.db import models
 
 __all__ = ["User"]
 
+from django.db.models import QuerySet
+
 from device.models import Definition
 from tariff.models import TariffPlan
 
 
 class User(AbstractUser):
-    personal_account = models.CharField(verbose_name="Лс счет", null=True, unique=True)
+    personal_account = models.CharField(verbose_name="Лс счет", null=True, unique=True, db_index=True)
     address = models.CharField(verbose_name="Адрес", max_length=255, default="")
     apartment = models.CharField(verbose_name="Квартира", max_length=11, null=True)
     fias = models.CharField(verbose_name="ФИАС", max_length=47, default="")
@@ -31,8 +33,8 @@ class User(AbstractUser):
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
     is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
 
-    definitions: Definition
-    tariff_choices: TariffPlan
+    definitions: QuerySet[Definition]
+    tariff_choices: QuerySet[TariffPlan]
 
     class Meta:
         verbose_name = "Пользователь"

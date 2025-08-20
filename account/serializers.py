@@ -5,17 +5,26 @@ from account.models import User
 from tariff.serializers import TariffPlanSerializer
 
 
-class Authorization(serializers.ModelSerializer):
+class Authorization(serializers.Serializer):
     login = serializers.CharField()
+    password = serializers.CharField()
+    target = serializers.CharField(default="code", label="Действие")
+    method = serializers.ChoiceField(default="sms", choices=(
+        ('sms', 'код по смс'),
+        ('email', 'код по email')
+    ), label="Метод")
+    
     class Meta:
-        model = User
-        fields = ["login", "password"]
+        fields = ["__all__"]
 
 
-class Registration(serializers.ModelSerializer):
+class Registration(serializers.Serializer):
+    phone = serializers.CharField()
+    email = serializers.CharField()
+    first_name = serializers.CharField()
+    last_name = serializers.CharField()
     class Meta:
-        model = User
-        fields = ["phone", "email", "first_name", "last_name"]
+        fields = ["__all__"]
 
 
 class AuthorizationResponseOk(serializers.Serializer):
@@ -84,3 +93,24 @@ class DataSerializer(serializers.ModelSerializer):
         model = User
         fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
         read_only_fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+
+
+class TargetResposneSerializer(serializers.Serializer):
+    id = serializers.UUIDField(label="Id задачи")
+    target = serializers.CharField(default="code", label="Действие")
+    method = serializers.ChoiceField(default="sms", choices=(
+        ('sms', 'код по смс'),
+        ('email', 'код по email')
+    ), label="Метод")
+
+
+class DoubleAuthenticationSerializer(TargetResposneSerializer):
+    target = None
+    method = None
+    code = serializers.CharField(min_length=6, max_length=6)
+
+
+# ------------------------------------
+
+class FastAuthUserSerializer(serializers.Serializer):
+    login = serializers.CharField()
