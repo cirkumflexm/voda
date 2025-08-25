@@ -1,4 +1,4 @@
-from django.db.models import QuerySet
+from django.db.models import QuerySet, Q
 from rest_framework import viewsets, permissions
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
@@ -21,9 +21,16 @@ class AddressView(viewsets.ReadOnlyModelViewSet):
     lookup_field = 'personal_account'
 
     def get_queryset(self) -> QuerySet:
-        queryset = self.queryset
+        queryset = self.queryset \
+            .filter(address__isnull=False) \
+            .only(
+            'personal_account',
+                'address',
+                'apartment',
+                'first_name',
+                'last_name'
+            ) \
+            .order_by('id')
         if self.request.user.groups.filter(id=3).exists():
             queryset = queryset.filter(id=self.request.user.id)
-        return queryset \
-            .values('personal_account', 'address', 'apartment', 'first_name', 'last_name') \
-            .order_by('id')
+        return queryset

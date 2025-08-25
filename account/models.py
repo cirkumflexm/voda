@@ -1,6 +1,4 @@
 
-from decimal import Decimal
-
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
@@ -15,7 +13,7 @@ from tariff.models import TariffPlan
 
 class User(AbstractUser):
     personal_account = models.CharField(verbose_name="Лс счет", null=True, unique=True, db_index=True)
-    address = models.CharField(verbose_name="Адрес", max_length=255, default="")
+    address = models.CharField(verbose_name="Адрес", max_length=255, null=True)
     apartment = models.CharField(verbose_name="Квартира", max_length=11, null=True)
     fias = models.CharField(verbose_name="ФИАС", max_length=47, default="")
     balance = models.DecimalField(verbose_name="Баланс", max_digits=15, decimal_places=2, default=0.)
