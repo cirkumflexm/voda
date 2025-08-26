@@ -4,15 +4,8 @@ from django.db import models
 from random import randint
 
 
-def _random_pa() -> int:
-    rand_list = {randint(11111, 2147483646) for _ in range(10)}
-    re_values = Address.objects.filter(pa__in=rand_list).only('pa')
-    rand_list.difference_update(re_values)
-    return next(iter(rand_list), None) or _random_pa()
-
-
 class Address(models.Model):
-    pa = models.PositiveIntegerField(verbose_name="Лицевой счет", primary_key=True, default=_random_pa)
+    pa = models.PositiveIntegerField(verbose_name="Лицевой счет", primary_key=True)
     street = models.CharField(verbose_name="Улица", blank=False)
     house = models.CharField(verbose_name="Дом", blank=True, null=True)
     building = models.CharField(verbose_name="Корпус", blank=True, null=True)
@@ -28,9 +21,15 @@ class Address(models.Model):
         )))
 
     def __getattribute__(self, item: str) -> Any:
-        field = super().__getattribute__(item)
         if item == 'pa':
-            return f'{field:0>12}'
-        return field
-
-
+            return f'{sum(map(ord, str(self))):0>12}'
+        elif item in (
+            'house',
+            'building',
+            'apartment',
+        ):
+            return (super().__getattribute__(item) or '').lower()
+        elif item == 'street':
+            return super().__getattribute__('street').title()
+        else:
+            return super().__getattribute__(item)

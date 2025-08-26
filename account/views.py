@@ -2,6 +2,7 @@ from celery.result import AsyncResult
 from django.contrib.auth.hashers import check_password
 from django.db import transaction
 from django.db.models import Q, F
+from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -20,9 +21,9 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from re import sub, compile
 
 from account.models import User
-from account.tasks import create_account, send_sms_code
-from account.serializers import Authorization, AuthorizationResponseOk, Logout, \
-    Registration, RegistrationResponseOk, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
+from account.tasks import task_create_account, send_sms_code
+from account.serializers import Authorization, AuthorizationResponse, Logout, \
+    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
     DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator
 from address.models import Address
 from config.celery import app
@@ -67,7 +68,7 @@ def release(request: Request, user: User) -> Response:
     summary="Код подтверждения",
     request=DoubleAuthenticationSerializer,
     responses={
-        200: AuthorizationResponseOk()
+        200: AuthorizationResponse()
     }
 )
 class DoubleAuthentication(generics.GenericAPIView):
@@ -136,57 +137,35 @@ class LoginOperator(APIView):
         return release(request, user)
 
 
-class RegistrationAPIView(APIView):
-    @extend_schema(
-        summary="Регистрация",
-        description="только ру номера: +7",
-        request=Registration,
-        responses={
-            200: RegistrationResponseOk(),
-            401: OpenApiResponse()
-        }
-    )
+@extend_schema(
+    summary="Регистрация",
+    description="только ру номера: +7",
+    responses={
+        200: RegistrationUserResponse(),
+        401: OpenApiResponse()
+    }
+)
+class RegistrationView(GenericAPIView):
+    serializer_class = RegistrationUser
+
     def post(self, request) -> Response:
-        first_name = request.data.get('first_name', '')
-        last_name = request.data.get('last_name', '')
-        email = request.data.get('email', '')
-        phone = request.data.get('phone', '')
-        fias = request.data.get('fias')
-        tariff_plan = request.data.get('tariff_plan')
-        address = request.data.get('address')
-        if not (first_name and last_name and phone):
-            return Response("Данные введены некорректно.", status=400)
-        phone = sub(PHONE_COMPILE, '', phone)
-        if User.objects.filter(phone=int(phone)).exists():
-            return Response("Номер уже зарегистрирован.", status=400)
-        elif email and User.objects.filter(email=email).exists():
-            return Response("Почта уже зарегистрирована.", status=400)
-        # create_account.delay(
-        #     phone=int(phone), email=email,
-        #     first_name=first_name, last_name=last_name,
-        #     apartment=apartment, fias=fias,
-        #     address=address, tariff_plan=tariff_plan
-        # )
-
-        # --------------------
-
-        with transaction.atomic():
-            address = Address.objects.create(**address)
-
-            user = User.objects.create_user(
-                username=address.pa,
-                email=email,
-                password="test",
-                phone=phone,
-                last_name=last_name,
-                first_name=first_name,
-                address=address,
-                tariff_plan_id=tariff_plan
-            )
-            user.groups.add(3)
-            TariffPlan.create_test_tariff_plan(user)
-            user.save()
-        return Response("Ok", status=200)
+        serializer = RegistrationUser(data=request.data)
+        assert serializer.is_valid(), serializer.error_messages
+        assert not User.objects \
+            .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
+            .exists(), "Номер уже зарегистрирован."
+        address = Address(**serializer.data['address'])
+        user = User(**(serializer.data | dict(address=address)))
+        # create_account.delay(user=user, address=address)
+        return Response(
+            RegistrationUserResponse({
+                'pa': address.pa,
+                'new': not Address.objects \
+                    .filter(pa=int(address.pa)) \
+                    .exists()
+            }).data,
+            status=200
+        )
 
 
 class LogoutAPIView(APIView):
@@ -196,7 +175,7 @@ class LogoutAPIView(APIView):
         summary="Выход",
         request=Logout,
         responses={
-            200: AuthorizationResponseOk(),
+            200: AuthorizationResponse(),
             401: OpenApiResponse()
         }
     )
@@ -254,7 +233,7 @@ class UserView(viewsets.ModelViewSet):
         """
 
     def create(self, request, *args, **kw) -> Response:
-        return RegistrationAPIView.post(self, request)
+        return RegistrationView.post(self, request)
 
     def get_queryset(self):
         if self.request.user.groups.filter(id=3).exists():

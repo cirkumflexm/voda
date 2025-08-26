@@ -14,6 +14,11 @@ def tariff_activate(user: User):
 
 
 @app.task()
+def task_init_payment(*, user: User, **kw) -> tuple[User, dict]:
+    return user, kw
+
+
+@app.task()
 def task_tariff_renewal_loop() -> None:
     for user in User.objects \
             .select_related('tariff', 'next_tariff_plan') \

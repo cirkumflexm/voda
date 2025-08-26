@@ -4,6 +4,7 @@ from rest_framework import serializers
 from account.models import User
 from address.serializers import AddressSerializeChange
 from tariff.serializers import TariffPlanSerializer
+from phonenumber_field.serializerfields import PhoneNumberField
 
 
 class Authorization(serializers.Serializer):
@@ -24,22 +25,31 @@ class AuthorizationOperator(Authorization):
     method = None
 
 
-class Registration(serializers.Serializer):
-    phone = serializers.CharField()
-    email = serializers.CharField()
-    first_name = serializers.CharField()
-    last_name = serializers.CharField()
-    class Meta:
-        fields = ["__all__"]
+class AddressSerializeChangeWithoutFias(AddressSerializeChange):
+    house = serializers.CharField(required=True)
+
+    class Meta(AddressSerializeChange.Meta):
+        fields = [*set(AddressSerializeChange.Meta.fields).difference(('fias', 'join'))]
 
 
-class AuthorizationResponseOk(serializers.Serializer):
+class RegistrationUser(serializers.Serializer):
+    phone = PhoneNumberField(label="Телефон", region='RU')
+    first_name = serializers.CharField(label="Имя")
+    last_name = serializers.CharField(label="Фамилия")
+    address = AddressSerializeChangeWithoutFias(label="Адрес")
+
+
+class RegistrationUserResponse(serializers.Serializer):
+    pa = serializers.CharField(label="Лицевой счет")
+    new = serializers.BooleanField(label="Активирован ранее")
+    status = serializers.CharField(default="Успешно!")
+    action = serializers.CharField(default="registration")
+    id = serializers.UUIDField()
+
+
+class AuthorizationResponse(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
-
-
-class RegistrationResponseOk(serializers.Serializer):
-    status = serializers.CharField(default="Ok")
 
 
 class Logout(serializers.Serializer):
