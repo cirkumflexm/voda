@@ -22,23 +22,15 @@ class DefinitionSerializerList(serializers.ModelSerializer):
         read_only_fields = ["id", "device", "number"]
         
         
-class UserGroupDefinitionSerializer(serializers.ModelSerializer):
+class UserGroupDefinitionSerializer(UserSerializerGet):
     definitions = DefinitionSerializerList(many=True, read_only=True)
 
-    class Meta:
-        model = User
-        fields = [
-            'definitions', 'id', 'first_name', 'last_name',
-            'phone', 'email', 'username', 'address', 'apartment',
-            'fias', 'balance', 'ws_status', 'tariff_plan',
-            'start_datetime_pp', 'end_datetime_pp'
-        ]
-        read_only_fields = [
-            'definition', 'id', 'first_name', 'last_name',
-            'phone', 'email', 'username', 'address', 'apartment',
-            'fias', 'balance', 'ws_status', 'tariff_plan',
-            'start_datetime_pp', 'end_datetime_pp'
-        ]
+    class Meta(UserSerializerGet.Meta):
+        fields = UserSerializerGet.Meta.fields + ['definitions']
+
+    @staticmethod
+    def get_pa(model) -> str | None:
+        return f'{model.address.pa:0>12}' if getattr(model.address, 'pa', False) else None
 
 
 class DefinitionSerializerGet(serializers.ModelSerializer):

@@ -1,4 +1,4 @@
-
+from django.db.models import F
 from rest_framework import viewsets
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
@@ -29,10 +29,12 @@ class DeviceView(viewsets.ModelViewSet):
 
 class DefinitionView(viewsets.ModelViewSet):
     queryset = Definition.objects \
-        .select_related('user', 'device').order_by('id')
+        .select_related('user', 'device', 'user__address') \
+        .annotate(pa=F('user__address')) \
+        .order_by('id')
     permission_classes = [IsAuthenticated, PermissionGroup]
     pagination_class = Pagination
-    http_method_names = ['get', 'post', 'patch']
+    http_method_names = ['get', 'post', 'patch']\
 
     def get_serializer_class(self):
         if self.action == 'list':

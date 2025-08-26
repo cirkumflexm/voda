@@ -2,6 +2,7 @@
 from rest_framework import serializers
 
 from account.models import User
+from address.serializers import AddressSerializeChange
 from tariff.serializers import TariffPlanSerializer
 
 
@@ -16,6 +17,11 @@ class Authorization(serializers.Serializer):
     
     class Meta:
         fields = ["__all__"]
+
+
+class AuthorizationOperator(Authorization):
+    target = None
+    method = None
 
 
 class Registration(serializers.Serializer):
@@ -40,59 +46,71 @@ class Logout(serializers.Serializer):
     refresh = serializers.CharField()
 
 
-class UserSerializerGet(serializers.ModelSerializer):
+class UserSerializeBase(serializers.ModelSerializer):
+    pa = serializers.SerializerMethodField()
+    address = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'first_name', 'last_name', 'phone', 'email', 'address',
+            'balance', 'ws_status', 'start_datetime_pp', 'end_datetime_pp',
+            'pa', 'is_new', 'tariff_plan', 'next_tariff_plan'
+        ]
+        read_only_fields = [
+            'balance', 'ws_status', 'start_datetime_pp',
+            'end_datetime_pp', 'pa', 'is_new'
+        ]
+
+    @staticmethod
+    def get_pa(model) -> str | None:
+        return f'{model.address.pa:0>12}' if getattr(model.address, 'pa', False) else None
+
+    @staticmethod
+    def get_address(model) -> str | None:
+        return str(model.address) if getattr(model, 'address', False) else None
+
+
+class UserSerializerGet(UserSerializeBase):
     tariff_plan = TariffPlanSerializer(read_only=True)
     next_tariff_plan = TariffPlanSerializer(read_only=True)
 
-    class Meta:
-       model = User
 
-       fields = [
-           'id', 'first_name', 'last_name', 'phone', 'email', 'username', 'address', 'apartment', 'fias',
-           'balance', 'ws_status', 'tariff_plan', 'next_tariff_plan',
-           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
-       ]
-       read_only_fields = [
-           'username', 'balance', 'ws_status',
-           'start_datetime_pp', 'end_datetime_pp',
-           'personal_account', 'is_new'
-       ]
+class UserSerializerPost(UserSerializeBase):
+    address = AddressSerializeChange()
+
+    class Meta(UserSerializeBase.Meta):
+        fields = [
+            'first_name', 'last_name', 'phone', 'email',
+            'address', 'tariff_plan', 'next_tariff_plan'
+        ]
+
+    def update(self, instance: User, validated_data: dict):
+        print(validated_data)
+        address = validated_data.pop('address', {})
+        instance.address.__dict__.update(address)
+        instance.__dict__.update(validated_data)
+        if address:
+            instance.address.save()
+        instance.save()
+        return instance
 
 
-class UserSerializerPost(serializers.ModelSerializer):
-    class Meta:
-       model = User
-
-       fields = [
-           'id', 'first_name', 'last_name', 'phone', 'email', 'address', 'apartment', 'fias',
-           'balance', 'ws_status', 'tariff_plan',
-           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
-       ]
-       read_only_fields = [
-           'username', 'personal_account', 'balance',
-           'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new'
-       ]
-
-class UserSerializerPatch(serializers.ModelSerializer):
-    class Meta:
-       model = User
-
-       fields = [
-           'id', 'first_name', 'last_name', 'phone', 'email', 'address', 'apartment', 'fias',
-           'balance', 'ws_status', 'tariff_plan', 'next_tariff_plan',
-           'start_datetime_pp', 'end_datetime_pp', 'personal_account', 'is_new'
-       ]
-       read_only_fields = [
-           'username', 'personal_account', 'balance',
-           'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new'
-       ]
+class UserSerializerPatch(UserSerializerPost):
+    pass
 
 
 class DataSerializer(serializers.ModelSerializer):
+    pa = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
-        read_only_fields = ['personal_account', 'ws_status', 'start_datetime_pp', 'end_datetime_pp']
+        fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
+        read_only_fields = ('ws_status', 'start_datetime_pp', 'end_datetime_pp')
+
+    @staticmethod
+    def get_pa(model: dict) -> str:
+        return f'{model.get('pa', ''):0>12}'
 
 
 class TargetResposneSerializer(serializers.Serializer):

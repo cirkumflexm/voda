@@ -12,7 +12,6 @@ from tariff.models import TariffPlan
 
 
 class User(AbstractUser):
-    personal_account = models.CharField(verbose_name="Лс счет", null=True, unique=True, db_index=True)
     address = models.OneToOneField("address.Address", verbose_name="Адрес", null=True, on_delete=models.CASCADE)
     balance = models.DecimalField(verbose_name="Баланс", max_digits=15, decimal_places=2, default=0.)
     ws_status = models.BooleanField(verbose_name="Статус подачи воды", default=False)

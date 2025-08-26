@@ -11,6 +11,5 @@ from .views import AddressView
 
 urlpatterns = [
     # path('', include(route.urls), name='addresses')
-    path('list/', AddressView.as_view({'get': 'list'}), name='address_list'),
-    path('list/<str:personal_account>/', AddressView.as_view({'get': 'retrieve'}), name='address_retrieve'),
+    path('list/', AddressView.as_view(), name='address_list')
 ]
