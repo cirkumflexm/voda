@@ -8,13 +8,18 @@ from secrets import token_bytes
 from time import sleep
 from typing import Optional
 
-from celery import Task
+from celery import Task, chain
+from django.db import transaction
 from redis import Redis
 from smsaero import SmsAero
 from dotenv import load_dotenv
+from yookassa.domain.response import PaymentResponse
+
 from account.models import User
+from address.models import Address
 
 from config.celery import app
+from tariff.models import TariffPlan
 
 load_dotenv()
 
@@ -45,47 +50,21 @@ create_account: Task
 redis = Redis(db=1)
 
 @app.task()
-def create_account(
-        *, phone: int, email: str,
-        first_name: str, last_name: str,
-        apartment: str, fias: str, address: str,
-        tariff_plan: Optional[int]
-) -> None:
-    password = b64encode(token_bytes(9)).decode()
-    count = User.objects.count() + 1
-    personal_account = f'{count + int(START_RANGE_PERSONAL_ID):0>12}'
-    message = MESSAGE % (first_name, password)
-    redis.lpush("sms_list", f"Sms for {personal_account}\n{message}")
+def task_create_account(user: User, payment: PaymentResponse, address: Address) -> tuple[User, PaymentResponse]:
+    # password = b64encode(token_bytes(9)).decode()
+    password = "test"
+    with transaction.atomic():
+        user.password = password
+        TariffPlan.create_test_tariff_plan(user)
+        user.groups.add(3)
+        address.save()
+        user.save()
+    message = MESSAGE % (user.first_name, password)
+    redis.lpush("sms_list", f"Sms for {address.pa}\n{message}")
     redis.ltrim("sms_list", 0, 9)
-    LOGGER.info(MESSAGE % (first_name, "*" * 9))
-    result = api.send_sms(phone, message)
-    while True:
-        sleep(10)
-        result = api.sms_status(result['id'])
-        match result['status']:
-            case 1:
-                user = User.objects.create_user(
-                    username=personal_account,
-                    email=email,
-                    password=password,
-                    personal_account=personal_account,
-                    phone=phone,
-                    last_name=last_name,
-                    first_name=first_name,
-                    fias=fias,
-                    address=address,
-                    apartment=apartment,
-                    tariff_plan_id=tariff_plan
-                )
-                user.groups.add(3)
-                user.save()
-                break
-            case 2:
-                break
-            case 6:
-                break
-            case _:
-                pass
+    LOGGER.info(MESSAGE % (user.first_name, "*" * 9))
+    # api.send_sms(int(user.phone.replace('+', '')), message)
+    return user, payment
 
 
 @app.task()

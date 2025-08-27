@@ -1,5 +1,4 @@
-from json import dumps
-
+from django.db.models import F
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
@@ -11,7 +10,6 @@ from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 
 from account.models import User
-from config.permissions import OnlyOperatorOrAdmin
 from payment.views import Create
 from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
 from .models import TariffPlan
@@ -58,10 +56,14 @@ class TariffPlanPermissionGroup(PermissionGroup):
     destroy=extend_schema(exclude=True)
 )
 class TariffPlanView(viewsets.ModelViewSet):
-    queryset = TariffPlan.objects.order_by('id')
+    queryset = TariffPlan.objects \
+        .select_related('owner') \
+        .annotate(pa=F('owner__address')) \
+        .order_by('id')
     serializer_class = TariffPlanSerializer
     permission_classes = [TariffPlanPermissionGroup, IsAuthenticated]
     pagination_class = Pagination
+    lookup_field = "uuid"
 
     def __init__(self, **kw) -> None:
         super().__init__(**kw)

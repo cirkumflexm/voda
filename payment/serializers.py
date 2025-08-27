@@ -48,3 +48,8 @@ class CreateResponse(serializers.Serializer):
 
     class Meta:
         fields = ["id", "description", "created_at", "amount", "confirmation", "name", "price", "unit_measurement"]
+
+
+class CreateByIdParamsSerializer(serializers.Serializer):
+    id = serializers.UUIDField(label="Id метода")
+    method = serializers.CharField(label="Метод")

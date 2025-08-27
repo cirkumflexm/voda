@@ -1,22 +1,23 @@
-
+from celery import chain
 from django.core.cache import cache
 from django.db.models import QuerySet
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse
+from rest_framework.request import Request
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
+from rest_framework.generics import GenericAPIView
 
-from account.models import User
-from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse
-from tariff.models import TariffPlan
+from account.tasks import task_create_account
+from account.models import User, RegistrationCacheModel
+from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse, CreateByIdParamsSerializer
 from tariff.serializers import TariffPlanSerializer
 from .models import Payment
 from .service import *
-from .tasks import check
+from .tasks import check, complete
 
 
-class Create(APIView):
+class Create(GenericAPIView):
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -68,9 +69,9 @@ class Create(APIView):
                 currency="RUB"
             )
             __result = __response["response_data"]
-            check.delay(__result['id'], user.id)
+            __task = chain(check.s(__result['id'], user), complete.s(__result['id']))
+            __task.apply_async()
             __result["tariff"] = TariffPlanSerializer(user.tariff_plan, context=request).data
-            del __result["tariff"]['id']
             return Response(__result)
         except ApiError as ex:
             return Response(
@@ -79,15 +80,54 @@ class Create(APIView):
             )
 
 
-class Check(APIView):
+@extend_schema(
+    summary="Создать оплату по id",
+    responses={
+        200: CreateResponse()
+    }
+)
+class CreateForTestTariff(GenericAPIView):
+    serializer_class = CreateByIdParamsSerializer
 
-    @extend_schema(
-        summary="Проверить статус оплаты",
-        request=CheckRequest,
-        responses={
-            200: CheckResponse()
-        }
-    )
+    def get(self, request: Request) -> Response:
+        serialize = CreateByIdParamsSerializer(request.data)
+        assert serialize.is_valid(), serialize.error_messages
+        reg_cache_model: RegistrationCacheModel = cache.get(serialize.data['id'])
+        if not reg_cache_model:
+            return Response(status=403)
+        assert reg_cache_model.method == serialize.data['method'], "Метод не определен."
+        __response = create_payment(
+            num=1,
+            price=reg_cache_model.tariff_plan.price,
+            tariff_name=reg_cache_model.tariff_plan.name,
+            full_name=f"{reg_cache_model.user.last_name} {reg_cache_model.user.first_name}",
+            user_phone=f"+{reg_cache_model.user.phone}",
+            user_email=reg_cache_model.user.email,
+            user_id=reg_cache_model.user.address.pa,
+            tariff_id=reg_cache_model.user.tariff_plan.id,
+            return_url="https://v.zesu.ru/",
+            currency="RUB"
+        )
+        __result = __response["response_data"]
+        __task = chain(
+            check.s(__result['id'], reg_cache_model.user),
+            task_create_account.s(reg_cache_model.user.address),
+            complete.s(__result['id'])
+        )
+        __task.apply_async()
+        __result["tariff"] = TariffPlanSerializer(reg_cache_model.user.tariff_plan).data
+        return Response(__result)
+
+
+@extend_schema(
+    summary="Проверить статус оплаты",
+    responses={
+        200: CheckResponse()
+    }
+)
+class Check(GenericAPIView):
+    serializer_class = CheckRequest
+
     def post(self, request) -> HttpResponse:
         try:
             payment_id = request.data["payment_id"]

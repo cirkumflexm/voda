@@ -1,6 +1,9 @@
+from uuid import uuid4
+
 from celery.result import AsyncResult
 from django.contrib.auth.hashers import check_password
-from django.db.models import Q
+from django.core.cache import cache
+from django.db.models import Q, F
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -18,11 +21,12 @@ from django.contrib.auth import authenticate, logout, login
 from rest_framework_simplejwt.views import TokenRefreshView
 from re import sub, compile
 
-from account.models import User
-from account.tasks import create_account, send_sms_code
-from account.serializers import Authorization, AuthorizationResponseOk, Logout, \
-    Registration, RegistrationResponseOk, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
-    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer
+from account.models import User, RegistrationCacheModel
+from account.tasks import task_create_account, send_sms_code
+from account.serializers import Authorization, AuthorizationResponse, Logout, \
+    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
+    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator
+from address.models import Address
 from config.celery import app
 from tariff.models import TariffPlan
 
@@ -65,7 +69,7 @@ def release(request: Request, user: User) -> Response:
     summary="Код подтверждения",
     request=DoubleAuthenticationSerializer,
     responses={
-        200: AuthorizationResponseOk()
+        200: AuthorizationResponse()
     }
 )
 class DoubleAuthentication(generics.GenericAPIView):
@@ -116,59 +120,65 @@ class LoginAPIView(APIView):
             return Response(serialize.error_messages, status=400)
 
 
-class RegistrationAPIView(APIView):
+class LoginOperator(APIView):
+
     @extend_schema(
-        summary="Регистрация",
-        description="только ру номера: +7",
-        request=Registration,
+        summary="Авторизация для операторов",
+        request=AuthorizationOperator,
         responses={
-            200: RegistrationResponseOk(),
-            401: OpenApiResponse()
+            200: TargetResposneSerializer()
         }
     )
+    def post(self, request: Request) -> Response:
+        _login = request.data['login']
+        password = request.data['password']
+        user = User.objects.filter(username=_login).first()
+        if not (user and check_password(password, user.password)):
+            return Response("Неправильно введен логин или пароль.", status=401)
+        return release(request, user)
+
+
+@extend_schema(
+    summary="Регистрация",
+    description="только ру номера: +7",
+    responses={
+        200: RegistrationUserResponse(),
+        401: OpenApiResponse()
+    }
+)
+class RegistrationView(GenericAPIView):
+    serializer_class = RegistrationUser
+
     def post(self, request) -> Response:
-        first_name = request.data.get('first_name', '')
-        last_name = request.data.get('last_name', '')
-        email = request.data.get('email', '')
-        phone = request.data.get('phone', '')
-        apartment = request.data.get('apartment')
-        fias = request.data.get('fias')
-        tariff_plan = request.data.get('tariff_plan')
-        address = request.data.get('address')
-        if not (first_name and last_name and phone):
-            return Response("Данные введены некорректно.", status=400)
-        phone = sub(PHONE_COMPILE, '', phone)
-        if User.objects.filter(phone=int(phone)).exists():
-            return Response("Номер уже зарегистрирован.", status=400)
-        elif email and User.objects.filter(email=email).exists():
-            return Response("Почта уже зарегистрирована.", status=400)
-        create_account.delay(
-            phone=int(phone), email=email,
-            first_name=first_name, last_name=last_name,
-            apartment=apartment, fias=fias,
-            address=address, tariff_plan=tariff_plan
+        serializer = RegistrationUser(data=request.data)
+        assert serializer.is_valid(), serializer.error_messages
+        assert not User.objects \
+            .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
+            .exists(), "Номер уже зарегистрирован."
+        address = Address(**serializer.data['address'])
+        user = User(**(serializer.data | dict(address=address)))
+        tariff_plan = TariffPlan.create_test_tariff_plan(user)
+        registration_user_response = RegistrationUserResponse({
+            'pa': address.pa,
+            'new': not Address.objects \
+                .filter(pa=int(address.pa)) \
+                .exists(),
+            'tariff_plan': tariff_plan,
+            'id': uuid4()
+        }).data
+        cache.set(
+            registration_user_response['id'],
+            RegistrationCacheModel(
+                method=registration_user_response['method'],
+                user=user,
+                tariff_plan=tariff_plan
+            ),
+            timeout=3600*24
         )
-
-        # --------------------
-
-        personal_account = f"{User.objects.count()+4324}"
-        user = User.objects.create_user(
-            username=personal_account,
-            email=email,
-            password="test",
-            personal_account=personal_account,
-            phone=phone,
-            last_name=last_name,
-            first_name=first_name,
-            fias=fias,
-            address=address,
-            apartment=apartment,
-            tariff_plan_id=tariff_plan
+        return Response(
+            registration_user_response,
+            status=200
         )
-        user.groups.add(3)
-        TariffPlan.create_test_tariff_plan(user)
-        user.save()
-        return Response("Ok", status=200)
 
 
 class LogoutAPIView(APIView):
@@ -178,7 +188,7 @@ class LogoutAPIView(APIView):
         summary="Выход",
         request=Logout,
         responses={
-            200: AuthorizationResponseOk(),
+            200: AuthorizationResponse(),
             401: OpenApiResponse()
         }
     )
@@ -214,10 +224,15 @@ class Refresh(TokenRefreshView):
     destroy=extend_schema(exclude=True)
 )
 class UserView(viewsets.ModelViewSet):
-    queryset = User.objects.select_related("tariff_plan") \
-        .filter(groups__id=3).order_by('id')
+    queryset = User.objects \
+        .select_related("tariff_plan") \
+        .select_related("address") \
+        .annotate(pa=F('address')) \
+        .filter(groups__id=3) \
+        .order_by('id')
     permission_classes = [IsAuthenticated]
     pagination_class = Pagination
+    lookup_field = "pa"
 
     def __init__(self, **kw) -> None:
         super().__init__(**kw)
@@ -231,16 +246,19 @@ class UserView(viewsets.ModelViewSet):
         """
 
     def create(self, request, *args, **kw) -> Response:
-        return RegistrationAPIView.post(self, request)
+        return RegistrationView.post(self, request)
 
     def get_queryset(self):
-        request = self.request
-        if request and request.user.groups.filter(id=3).exists():
-            return [self.request.user]
+        if self.request.user.groups.filter(id=3).exists():
+            return (User.objects
+                .select_related("tariff_plan")
+                .select_related("address")
+                .get(id=self.request.user.id)
+            ,)
         return super().get_queryset()
 
     def get_serializer_class(self):
-        if self.request.method == 'GET':
+        if self.action == 'list':
             return UserSerializerGet
         elif self.action == 'partial_update':
             return UserSerializerPatch
@@ -250,9 +268,12 @@ class UserView(viewsets.ModelViewSet):
 
 @extend_schema(summary="Получить данные пользователя")
 class DataView(generics.RetrieveAPIView):
-    queryset = User.objects.filter(groups__id=3)
+    queryset = User.objects \
+        .annotate(pa=F('address')) \
+        .filter(groups__id=3) \
+        .values('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
     serializer_class = DataSerializer
-    lookup_field = "personal_account"
+    lookup_field = "pa"
 
 
 
@@ -280,12 +301,10 @@ class FastAuthUser(GenericAPIView):
         _login = request.data['login']
         phone = sub(PHONE_COMPILE, "", _login)
         phone = int(phone) if phone else -1
-        user = User.objects.filter(
-            Q(username=_login) |
-            Q(personal_account=_login) |
-            Q(email=_login) |
-            Q(phone=phone)
-        ).first()
+        query = Q(username=_login) | Q(email=_login) | Q(phone=phone)
+        if str.isnumeric(_login):
+            query = query | Q(address=int(_login))
+        user = User.objects.filter(query).first()
         if user is None:
             return Response("Пользователь не найден", status=400)
         return release(request, user)
