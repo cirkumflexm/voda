@@ -13,6 +13,8 @@ from django.db import transaction
 from redis import Redis
 from smsaero import SmsAero
 from dotenv import load_dotenv
+from yookassa.domain.response import PaymentResponse
+
 from account.models import User
 from address.models import Address
 
@@ -48,7 +50,7 @@ create_account: Task
 redis = Redis(db=1)
 
 @app.task()
-def task_create_account(*, user: User, address: Address, **kw) -> None:
+def task_create_account(user: User, payment: PaymentResponse, address: Address) -> tuple[User, PaymentResponse]:
     # password = b64encode(token_bytes(9)).decode()
     password = "test"
     with transaction.atomic():
@@ -61,7 +63,8 @@ def task_create_account(*, user: User, address: Address, **kw) -> None:
     redis.lpush("sms_list", f"Sms for {address.pa}\n{message}")
     redis.ltrim("sms_list", 0, 9)
     LOGGER.info(MESSAGE % (user.first_name, "*" * 9))
-    api.send_sms(int(user.phone.replace('+', '')), message)
+    # api.send_sms(int(user.phone.replace('+', '')), message)
+    return user, payment
 
 
 @app.task()

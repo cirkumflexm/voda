@@ -1,8 +1,9 @@
+from uuid import uuid4
+
 from celery.result import AsyncResult
 from django.contrib.auth.hashers import check_password
-from django.db import transaction
+from django.core.cache import cache
 from django.db.models import Q, F
-from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import PermissionDenied
@@ -20,7 +21,7 @@ from django.contrib.auth import authenticate, logout, login
 from rest_framework_simplejwt.views import TokenRefreshView
 from re import sub, compile
 
-from account.models import User
+from account.models import User, RegistrationCacheModel
 from account.tasks import task_create_account, send_sms_code
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
@@ -156,14 +157,26 @@ class RegistrationView(GenericAPIView):
             .exists(), "Номер уже зарегистрирован."
         address = Address(**serializer.data['address'])
         user = User(**(serializer.data | dict(address=address)))
-        # create_account.delay(user=user, address=address)
+        tariff_plan = TariffPlan.create_test_tariff_plan(user)
+        registration_user_response = RegistrationUserResponse({
+            'pa': address.pa,
+            'new': not Address.objects \
+                .filter(pa=int(address.pa)) \
+                .exists(),
+            'tariff_plan': tariff_plan,
+            'id': uuid4()
+        }).data
+        cache.set(
+            registration_user_response['id'],
+            RegistrationCacheModel(
+                method=registration_user_response['method'],
+                user=user,
+                tariff_plan=tariff_plan
+            ),
+            timeout=3600*24
+        )
         return Response(
-            RegistrationUserResponse({
-                'pa': address.pa,
-                'new': not Address.objects \
-                    .filter(pa=int(address.pa)) \
-                    .exists()
-            }).data,
+            registration_user_response,
             status=200
         )
 

@@ -11,5 +11,5 @@ router_private.register('choices', TariffChoices, basename='tariff_choices')
 urlpatterns = [
     path('', include(router_private.urls), name='tariffs'),
     path('activate', Activate.as_view(), name='tariff_activate'),
-    path('testtariff', ActivationTestTariff.as_view(), name='activation_test_tariff'),
+    path('test-tariff', ActivationTestTariff.as_view(), name='activation_test_tariff'),
 ]

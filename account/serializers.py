@@ -3,14 +3,15 @@ from rest_framework import serializers
 
 from account.models import User
 from address.serializers import AddressSerializeChange
-from tariff.serializers import TariffPlanSerializer
+from config.tools import GetPaBase
+from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutOwner
 from phonenumber_field.serializerfields import PhoneNumberField
 
 
 class Authorization(serializers.Serializer):
     login = serializers.CharField()
     password = serializers.CharField()
-    target = serializers.CharField(default="code", label="Действие")
+    target = serializers.CharField(default="code", label="След. операция")
     method = serializers.ChoiceField(default="sms", choices=(
         ('sms', 'код по смс'),
         ('email', 'код по email')
@@ -29,7 +30,9 @@ class AddressSerializeChangeWithoutFias(AddressSerializeChange):
     house = serializers.CharField(required=True)
 
     class Meta(AddressSerializeChange.Meta):
-        fields = [*set(AddressSerializeChange.Meta.fields).difference(('fias', 'join'))]
+        fields = AddressSerializeChange.Meta.fields
+        fields.remove('fias')
+        fields.remove('join')
 
 
 class RegistrationUser(serializers.Serializer):
@@ -42,9 +45,11 @@ class RegistrationUser(serializers.Serializer):
 class RegistrationUserResponse(serializers.Serializer):
     pa = serializers.CharField(label="Лицевой счет")
     new = serializers.BooleanField(label="Активирован ранее")
-    status = serializers.CharField(default="Успешно!")
-    action = serializers.CharField(default="registration")
-    id = serializers.UUIDField()
+    status = serializers.CharField(default="Успешно!", label="Статус")
+    action = serializers.CharField(default="registration", label="Действие")
+    id = serializers.UUIDField(label="Id операции")
+    tariff_plan = TariffPlanSerializerWithoutOwner(read_only=True, label="Тариф")
+    method = serializers.CharField(label="Метод", default="payment")
 
 
 class AuthorizationResponse(serializers.Serializer):
@@ -56,7 +61,7 @@ class Logout(serializers.Serializer):
     refresh = serializers.CharField()
 
 
-class UserSerializeBase(serializers.ModelSerializer):
+class UserSerializeBase(serializers.ModelSerializer, GetPaBase):
     pa = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
 
@@ -71,10 +76,6 @@ class UserSerializeBase(serializers.ModelSerializer):
             'balance', 'ws_status', 'start_datetime_pp',
             'end_datetime_pp', 'pa', 'is_new'
         ]
-
-    @staticmethod
-    def get_pa(model) -> str | None:
-        return f'{model.address.pa:0>12}' if getattr(model.address, 'pa', False) else None
 
     @staticmethod
     def get_address(model) -> str | None:

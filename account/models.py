@@ -1,5 +1,6 @@
 
 from django.contrib.auth.models import AbstractUser
+from dataclasses import dataclass
 from django.db import models
 
 
@@ -38,3 +39,10 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.username or f"{self.last_name} {self.first_name}"
+
+
+@dataclass
+class RegistrationCacheModel:
+    method: str
+    user: User
+    tariff_plan: TariffPlan

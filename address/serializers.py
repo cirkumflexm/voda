@@ -7,6 +7,7 @@ from address.models import Address
 
 class AddressSerializeBase(serializers.ModelSerializer):
     join = serializers.SerializerMethodField()
+    pa = serializers.CharField(label="Лицевой счет", read_only=True)
 
     class Meta:
         model = Address

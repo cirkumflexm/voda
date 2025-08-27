@@ -2,7 +2,8 @@
 from rest_framework import serializers
 
 from account.models import User
-from account.serializers import UserSerializerGet
+from account.serializers import UserSerializerGet, UserSerializeBase
+from config.tools import GetPaBase
 from .models import *
 
 
@@ -22,15 +23,11 @@ class DefinitionSerializerList(serializers.ModelSerializer):
         read_only_fields = ["id", "device", "number"]
         
         
-class UserGroupDefinitionSerializer(UserSerializerGet):
+class UserGroupDefinitionSerializer(UserSerializerGet, GetPaBase):
     definitions = DefinitionSerializerList(many=True, read_only=True)
 
     class Meta(UserSerializerGet.Meta):
         fields = UserSerializerGet.Meta.fields + ['definitions']
-
-    @staticmethod
-    def get_pa(model) -> str | None:
-        return f'{model.address.pa:0>12}' if getattr(model.address, 'pa', False) else None
 
 
 class DefinitionSerializerGet(serializers.ModelSerializer):

@@ -1,24 +1,33 @@
 
 from rest_framework import serializers
 
+from config.tools import GetPaBase
 from .models import *
 
 
-class TariffPlanSerializer(serializers.ModelSerializer):
+class TariffPlanSerializer(serializers.ModelSerializer, GetPaBase):
+    pa = serializers.SerializerMethodField(label="Принадлежит")
 
     class Meta:
         model = TariffPlan
-        fields = ['id', 'name', 'price', 'archive', 'unit_measurement', 'owner', 'is_test']
-        read_only_fields = ['id', 'is_test']
+        fields = ['uuid', 'name', 'price', 'archive', 'unit_measurement', 'pa', 'is_test']
+        read_only_fields = ['uuid', 'is_test', 'pa']
         allows = ["GET", "POST", "PATCH"]
+
+
+class TariffPlanSerializerWithoutOwner(TariffPlanSerializer):
+    class Meta(TariffPlanSerializer.Meta):
+        fields = TariffPlanSerializer.Meta.fields.copy()
+        fields.remove('pa')
+        allows = ['GET']
 
 
 class TariffChoicesSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TariffPlan
-        fields = ['name', 'price', 'archive', 'unit_measurement', 'is_test']
-        read_only_fields = ['id', 'name', 'price', 'archive', 'unit_measurement', 'is_test']
+        fields = ['uuid', 'name', 'price', 'archive', 'unit_measurement', 'is_test']
+        read_only_fields = ['uuid', 'id', 'name', 'price', 'archive', 'unit_measurement', 'is_test']
         allows = ['GET']
 
 
