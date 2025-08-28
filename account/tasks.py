@@ -9,6 +9,7 @@ from time import sleep
 from typing import Optional
 
 from celery import Task, chain
+from celery.signals import worker_ready
 from django.db import transaction
 from redis import Redis
 from smsaero import SmsAero
@@ -55,8 +56,8 @@ def task_create_account(user: User, payment: PaymentResponse, address: Address) 
     password = "test"
     with transaction.atomic():
         user.password = password
-        TariffPlan.create_test_tariff_plan(user)
         user.groups.add(3)
+        user.tariff_plan.save()
         address.save()
         user.save()
     message = MESSAGE % (user.first_name, password)
@@ -77,3 +78,4 @@ def send_sms_code(phone: str, is_user: bool, pa: str) -> tuple[str | None, str]:
         # api.send_sms(user.phone, message)
         return str(_rand), pa
     return None, pa
+

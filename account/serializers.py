@@ -9,8 +9,8 @@ from phonenumber_field.serializerfields import PhoneNumberField
 
 
 class Authorization(serializers.Serializer):
-    login = serializers.CharField()
-    password = serializers.CharField()
+    login = serializers.CharField(label="Логин")
+    password = serializers.CharField(label="Пароль")
     target = serializers.CharField(default="code", label="След. операция")
     method = serializers.ChoiceField(default="sms", choices=(
         ('sms', 'код по смс'),
@@ -44,7 +44,7 @@ class RegistrationUser(serializers.Serializer):
 
 class RegistrationUserResponse(serializers.Serializer):
     pa = serializers.CharField(label="Лицевой счет")
-    new = serializers.BooleanField(label="Активирован ранее")
+    new = serializers.BooleanField(label="Не активирован ранее")
     status = serializers.CharField(default="Успешно!", label="Статус")
     action = serializers.CharField(default="registration", label="Действие")
     id = serializers.UUIDField(label="Id операции")
