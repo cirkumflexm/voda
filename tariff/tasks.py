@@ -1,7 +1,7 @@
 
 import logging
 
-from celery import Task
+from celery import Task, group
 from celery.signals import worker_ready
 from django.db import transaction
 from django.db.models import Q
@@ -43,8 +43,9 @@ def task_tariff_activate_loop(self: Task) -> None:
             for user in User.objects \
                     .select_for_update(skip_locked=True) \
                     .filter(
-                        end_datetime_pp__lt = timezone.now(),
-                        groups__id=3, auto_payment=True,
+                        Q(end_datetime_pp__lt = timezone.now()) | \
+                            Q(end_datetime_pp__isnull=True),
+                        groups__id=3,
                         tariff_plan__isnull=False
                     ) \
                     .only(
@@ -64,13 +65,13 @@ def task_tariff_activate_loop(self: Task) -> None:
                 logging.info(f"user - {user}")
                 complete_tariff(user)
                 set_next_tariff(user)
-                tariff_activate(user)
+                if user.auto_payment:
+                    tariff_activate(user)
                 user.save()
     finally:
-        # self.retry(countdown=0)
-        pass
+        self.retry(countdown=0)
 
 
 @worker_ready.connect
 def startup(*args, **kw) -> None:
-    task_tariff_activate_loop.delay()
+    group(task_tariff_activate_loop.s() for _ in range(5)).apply_async()
