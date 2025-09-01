@@ -155,14 +155,12 @@ class RegistrationView(GenericAPIView):
         assert not User.objects \
             .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
             .exists(), "Номер уже зарегистрирован."
-        address = Address(**serializer.data['address'])
+        address = Address.objects.get(pa=int(serializer.data['address']['pa']))
         user = User(**(serializer.data | dict(address=address)))
         tariff_plan = TariffPlan.create_test_tariff_plan(user)
         registration_user_response = RegistrationUserResponse({
             'pa': address.pa,
-            'new': not Address.objects \
-                .filter(pa=int(address.pa)) \
-                .exists(),
+            'new': True,
             'tariff_plan': tariff_plan,
             'id': uuid4()
         }).data

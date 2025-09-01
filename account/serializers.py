@@ -2,7 +2,7 @@
 from rest_framework import serializers
 
 from account.models import User
-from address.serializers import AddressSerializeChange
+from address.serializers import ForRegistrationAddress, AddressSerializeChange
 from config.tools import GetPaBase
 from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutOwner
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -26,20 +26,11 @@ class AuthorizationOperator(Authorization):
     method = None
 
 
-class AddressSerializeChangeWithoutFias(AddressSerializeChange):
-    house = serializers.CharField(required=True)
-
-    class Meta(AddressSerializeChange.Meta):
-        fields = AddressSerializeChange.Meta.fields
-        fields.remove('fias')
-        fields.remove('join')
-
-
 class RegistrationUser(serializers.Serializer):
     phone = PhoneNumberField(label="Телефон", region='RU')
     first_name = serializers.CharField(label="Имя")
     last_name = serializers.CharField(label="Фамилия")
-    address = AddressSerializeChangeWithoutFias(label="Адрес")
+    address = ForRegistrationAddress(label="Адрес")
 
 
 class RegistrationUserResponse(serializers.Serializer):

@@ -46,7 +46,8 @@ def task_tariff_activate_loop(self: Task) -> None:
                         Q(end_datetime_pp__lt = timezone.now()) | \
                             Q(end_datetime_pp__isnull=True),
                         groups__id=3,
-                        tariff_plan__isnull=False
+                        tariff_plan__isnull=False,
+                        ws_status=True
                     ) \
                     .only(
                         'balance',
@@ -74,4 +75,4 @@ def task_tariff_activate_loop(self: Task) -> None:
 
 @worker_ready.connect
 def startup(*args, **kw) -> None:
-    group(task_tariff_activate_loop.s() for _ in range(5)).apply_async()
+    group(task_tariff_activate_loop.s() for _ in range(1)).apply_async()

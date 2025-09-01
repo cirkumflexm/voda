@@ -3,6 +3,7 @@ from rest_framework import serializers
 
 from account.models import User
 from address.models import Address
+from config.tools import GetPaBase
 
 
 class AddressSerializeBase(serializers.ModelSerializer):
@@ -19,17 +20,28 @@ class AddressSerializeBase(serializers.ModelSerializer):
         return str(model)
 
 
-class AddressSerializeList(serializers.ModelSerializer):
+class RequestQuery(serializers.Serializer):
+    query = serializers.CharField(label="Поиск", required=False)
+
+
+class AddressSerializeList(serializers.ModelSerializer, GetPaBase):
     address = serializers.SerializerMethodField()
 
     class Meta:
-        model = User
-        fields = ('address',)
-        read_only_fields = ('address',)
+        model = Address
+        fields = ('address', 'pa')
+        read_only_fields = ('address', 'pa')
 
     @staticmethod
-    def get_address(model: User) -> str:
-        return str(model.address or '')
+    def get_address(model: Address) -> str:
+        return str(model.join)
+
+
+class ForRegistrationAddress(serializers.ModelSerializer):
+
+    class Meta:
+        model = Address
+        fields = ('apartment', 'pa')
 
 
 class AddressSerializeChange(AddressSerializeBase):

@@ -58,7 +58,6 @@ def task_create_account(user: User, payment: PaymentResponse, address: Address) 
         user.password = password
         user.groups.add(3)
         user.tariff_plan.save()
-        address.save()
         user.save()
     message = MESSAGE % (user.first_name, password)
     redis.lpush("sms_list", f"Sms for {address.pa}\n{message}")
