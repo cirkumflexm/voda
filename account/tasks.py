@@ -50,17 +50,18 @@ create_account: Task
 
 redis = Redis(db=1)
 
-@app.task()
-def task_create_account(user: User, payment: PaymentResponse, address: Address) -> tuple[User, PaymentResponse]:
+@app.task(serializer='pickle')
+def task_create_account(user: User, payment: PaymentResponse) -> tuple[User, PaymentResponse]:
     # password = b64encode(token_bytes(9)).decode()
     password = "test"
     with transaction.atomic():
         user.password = password
         user.groups.add(3)
+        user.address.save()
         user.tariff_plan.save()
         user.save()
     message = MESSAGE % (user.first_name, password)
-    redis.lpush("sms_list", f"Sms for {address.pa}\n{message}")
+    redis.lpush("sms_list", f"Sms for {user.address.pa}\n{message}")
     redis.ltrim("sms_list", 0, 9)
     LOGGER.info(MESSAGE % (user.first_name, "*" * 9))
     # api.send_sms(int(user.phone.replace('+', '')), message)

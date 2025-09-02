@@ -1,6 +1,8 @@
 
 from django.contrib.auth.models import AbstractUser
 from dataclasses import dataclass
+
+from django.core.validators import MinValueValidator
 from django.db import models
 
 
@@ -14,7 +16,10 @@ from tariff.models import TariffPlan
 
 class User(AbstractUser):
     address = models.OneToOneField("address.Address", verbose_name="Адрес", null=True, on_delete=models.CASCADE)
-    balance = models.DecimalField(verbose_name="Баланс", max_digits=15, decimal_places=2, default=0.)
+    balance = models.DecimalField(
+        verbose_name="Баланс", max_digits=15, decimal_places=2,
+        default=0., validators=[MinValueValidator(0)]
+    )
     ws_status = models.BooleanField(verbose_name="Статус подачи воды", default=False)
     tariff_plan = models.ForeignKey(
         "tariff.TariffPlan", verbose_name="Тариф", blank=True,

@@ -63,8 +63,8 @@ def create_payment(
         }
     )
     return {
-        "user_id": payment.metadata["user_id"],
-        "tariff_id": payment.metadata["tariff_id"],
+        "user_id": user_id,
+        "tariff_id": tariff_id,
         "response_data": {
             "id": payment.id,
             "description": payment.description,
@@ -76,7 +76,6 @@ def create_payment(
             "confirmation": {
                 "type": payment.confirmation["type"],
                 "confirmation_token": payment.confirmation["confirmation_token"]
-                # "confirmation_url": payment.confirmation["confirmation_url"],
             }
         }
     }

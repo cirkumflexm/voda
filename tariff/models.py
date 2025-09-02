@@ -9,6 +9,7 @@ from decimal import Decimal
 from typing import Self
 from uuid import uuid4
 
+from django.core.validators import MinValueValidator
 from django.db.models import QuerySet
 from django.db import models
 
@@ -16,7 +17,10 @@ from django.db import models
 class TariffPlan(models.Model):
     uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа")
     name = models.CharField(max_length=255, verbose_name="Название")
-    price = models.DecimalField(verbose_name="Поле Цена в рублях", max_digits=15, decimal_places=2)
+    price = models.DecimalField(
+        verbose_name="Поле Цена в рублях", max_digits=15, decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
     archive = models.BooleanField(verbose_name="Признак архивности", default=False)
     unit_measurement = models.CharField(
         verbose_name="Единица измерения",

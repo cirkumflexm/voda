@@ -1,24 +1,21 @@
 
 from rest_framework import serializers
 
-from config.tools import GetPaBase
+from config.tools import GetPa, Pa
 from .models import *
 
 
-class TariffPlanSerializer(serializers.ModelSerializer, GetPaBase):
-    pa = serializers.SerializerMethodField(label="Принадлежит")
-
+class TariffPlanSerializer(serializers.ModelSerializer):
     class Meta:
         model = TariffPlan
-        fields = ['uuid', 'name', 'price', 'archive', 'unit_measurement', 'pa', 'is_test']
-        read_only_fields = ['uuid', 'is_test', 'pa']
+        fields = ['uuid', 'name', 'price', 'archive', 'unit_measurement', 'is_test']
+        read_only_fields = ['uuid', 'is_test']
         allows = ["GET", "POST", "PATCH"]
 
 
 class TariffPlanSerializerWithoutOwner(TariffPlanSerializer):
     class Meta(TariffPlanSerializer.Meta):
-        fields = TariffPlanSerializer.Meta.fields.copy()
-        fields.remove('pa')
+        fields = TariffPlanSerializer.Meta.fields
         allows = ['GET']
 
 

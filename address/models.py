@@ -1,3 +1,4 @@
+from typing import Any
 
 from django.contrib.postgres.indexes import BTreeIndex
 from django.db import models
@@ -23,16 +24,16 @@ class Address(models.Model):
             f'кв. {self.apartment}' if self.apartment else None
         )))
 
-    # def __getattribute__(self, item: str) -> Any:
-    #     if item == 'pa':
-    #         return f'{sum(map(ord, str(self))):0>12}'
-    #     elif item in (
-    #         'house',
-    #         'building',
-    #         'apartment',
-    #     ):
-    #         return (super().__getattribute__(item) or '').lower()
-    #     elif item == 'street':
-    #         return super().__getattribute__('street').title()
-    #     else:
-    #         return super().__getattribute__(item)
+    def __getattribute__(self, item: str) -> Any:
+        if item == 'pa':
+            return f'{sum(map(ord, str(self))):0>12}'
+        elif item in (
+            'house',
+            'building',
+            'apartment',
+        ):
+            return (super().__getattribute__(item) or '').lower()
+        elif item == 'street':
+            return super().__getattribute__('street').title()
+        else:
+            return super().__getattribute__(item)

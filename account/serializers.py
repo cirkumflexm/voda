@@ -3,7 +3,7 @@ from rest_framework import serializers
 
 from account.models import User
 from address.serializers import ForRegistrationAddress, AddressSerializeChange
-from config.tools import GetPaBase
+from config.tools import GetPa
 from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutOwner
 from phonenumber_field.serializerfields import PhoneNumberField
 
@@ -52,7 +52,7 @@ class Logout(serializers.Serializer):
     refresh = serializers.CharField()
 
 
-class UserSerializeBase(serializers.ModelSerializer, GetPaBase):
+class UserSerializeBase(serializers.ModelSerializer, GetPa):
     pa = serializers.SerializerMethodField()
     address = serializers.SerializerMethodField()
 

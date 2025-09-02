@@ -38,7 +38,7 @@ class Create(GenericAPIView):
 
     @extend_schema(
         summary="Создать и получить ссылку для оплаты [No authenticated]",
-        description="номер карты - 5555555555554477\n\nhttps://yookassa.ru/developers/payment-acceptance/integration-scenarios/widget/quick-start",
+        description="номер карты - 5555555555554477\n\nhttps://yookassa.ru/developers/payment-acceptance/integration-scenarios/widget/quick-start\n\nhttps://yoomoney.ru/api-pages/v2/payment-confirm/epl?orderId=",
         request=CreateRequest,
         responses={
             200: CreateResponse()
@@ -82,15 +82,18 @@ class Create(GenericAPIView):
 
 @extend_schema(
     summary="Создать оплату по id",
+    parameters=[CreateByIdParamsSerializer],
     responses={
         200: CreateResponse()
     }
 )
 class CreateForTestTariff(GenericAPIView):
-    serializer_class = CreateByIdParamsSerializer
 
     def get(self, request: Request) -> Response:
-        serialize = CreateByIdParamsSerializer(request.data)
+        serialize = CreateByIdParamsSerializer(data={
+            "id": request.GET['id'],
+            "method": request.GET['method'],
+        })
         assert serialize.is_valid(), serialize.error_messages
         reg_cache_model: RegistrationCacheModel = cache.get(serialize.data['id'])
         if not reg_cache_model:
@@ -101,7 +104,7 @@ class CreateForTestTariff(GenericAPIView):
             price=reg_cache_model.tariff_plan.price,
             tariff_name=reg_cache_model.tariff_plan.name,
             full_name=f"{reg_cache_model.user.last_name} {reg_cache_model.user.first_name}",
-            user_phone=f"+{reg_cache_model.user.phone}",
+            user_phone=reg_cache_model.user.phone,
             user_email=reg_cache_model.user.email,
             user_id=reg_cache_model.user.address.pa,
             tariff_id=reg_cache_model.user.tariff_plan.id,
@@ -110,12 +113,13 @@ class CreateForTestTariff(GenericAPIView):
         )
         __result = __response["response_data"]
         __task = chain(
-            check.s(__result['id'], reg_cache_model.user),
-            task_create_account.s(reg_cache_model.user.address),
+            check.s(__result['id'], serialize.data['id']),
+            task_create_account.s(),
             complete.s(__result['id'])
         )
         __task.apply_async()
         __result["tariff"] = TariffPlanSerializer(reg_cache_model.user.tariff_plan).data
+        __result["pa"] = reg_cache_model.user.address.pa
         return Response(__result)
 
 
