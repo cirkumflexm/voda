@@ -22,6 +22,7 @@ from address.models import Address
 
 from config.celery import app
 from tariff.models import TariffPlan
+from tariff.src.tools import Main
 
 load_dotenv()
 
@@ -52,12 +53,14 @@ create_account: Task
 redis = Redis(db=1)
 
 @app.task
-def task_create_account(payment_value: float, cache_id: str) -> float:
+def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> float:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
     # password = b64encode(token_bytes(9)).decode()
     password = "test"
     with transaction.atomic():
         reg_cache_model.user.password = password
+        reg_cache_model.user.tariff_plan.owner_id = 5
+        Main(reg_cache_model.user, payment_id).add_balance(payment_value)
         reg_cache_model.user.tariff_plan.save()
         reg_cache_model.user.save()
         reg_cache_model.user.groups.add(3)

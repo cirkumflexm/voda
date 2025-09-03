@@ -31,12 +31,12 @@ class BaseMain:
         self.payment_id = payment_id
 
     def add_balance(self, count: float) -> None:
-        self.user.balance += Decimal(count)
-        QuerySet(Payment).create(
-            user=self.user,
-            quantity=Decimal(count),
-            payment=self.payment_id
-        )
+        self.user.balance = Decimal(count) + Decimal(self.user.balance)
+        # QuerySet(Payment).create(
+        #     user=self.user,
+        #     quantity=Decimal(count),
+        #     payment=self.payment_id
+        # )
 
     def activate(self) -> None:
         self.user.balance -= self.user.tariff_plan.price

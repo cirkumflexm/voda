@@ -19,5 +19,7 @@ def check(payment_id: str) -> float:
 def complete(value: float, payment_id: str, cache_id: str) -> None:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
     Main(reg_cache_model.user, payment_id).add_balance(value)
-    reg_cache_model.user.save()
+    reg_cache_model.user.save(update_fields=[
+        "balance",
+    ])
     cache.delete(cache_id)
