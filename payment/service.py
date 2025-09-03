@@ -1,15 +1,15 @@
-from dotenv import load_dotenv
 from yookassa import Configuration, Payment
 from yookassa.domain.exceptions import ApiError
 from yookassa.domain.common.user_agent import Version
-
+from yookassa.domain.response import PaymentResponse
+from dotenv import load_dotenv
 from os import getenv
 
 load_dotenv()
 
 
 __all__ = [
-    "ApiError", "create_payment", "find_payment", "capture_payment"
+    "ApiError", "create_payment", "find_payment", "capture_payment", "Payment"
 ]
 
 
@@ -22,8 +22,7 @@ def create_payment(
         *, num: int, price: float, currency: str,
         tariff_name: str, full_name: str,
         user_phone: str, user_email: str,
-        user_id: int, tariff_id: int,
-        return_url: str
+        user_id: int, tariff_id: int
 ) -> dict:
     payment = Payment.create(
         {
@@ -81,25 +80,9 @@ def create_payment(
     }
 
 
-def find_payment(*, payment_id: str) -> dict:
-    payment = Payment.find_one(payment_id)
-    return {
-        "response_data": {
-            "status": payment.status
-        },
-        "metadata": payment.metadata
-    }
+def find_payment(*, payment_id: str) -> PaymentResponse:
+    return Payment.find_one(payment_id)
 
 
-def capture_payment(*, payment_id: str) -> dict:
-    payment = Payment.capture(
-        payment_id=payment_id
-    )
-    return {
-        "user_id": payment.metadata["user_id"],
-        "tariff_id": payment.metadata["tariff_id"],
-        "amount_value": payment.amount.value,
-        "response_data": {
-            "status": payment.status
-        }
-    }
+def capture_payment(*, payment_id: str) -> PaymentResponse:
+    return Payment.capture(payment_id=payment_id)

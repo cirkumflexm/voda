@@ -10,13 +10,14 @@ from typing import Optional
 
 from celery import Task, chain
 from celery.signals import worker_ready
+from django.core.cache import cache
 from django.db import transaction
 from redis import Redis
 from smsaero import SmsAero
 from dotenv import load_dotenv
 from yookassa.domain.response import PaymentResponse
 
-from account.models import User
+from account.models import User, RegistrationCacheModel
 from address.models import Address
 
 from config.celery import app
@@ -50,22 +51,23 @@ create_account: Task
 
 redis = Redis(db=1)
 
-@app.task(serializer='pickle')
-def task_create_account(user: User, payment: PaymentResponse) -> tuple[User, PaymentResponse]:
+@app.task
+def task_create_account(payment_value: float, cache_id: str) -> float:
+    reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
     # password = b64encode(token_bytes(9)).decode()
     password = "test"
     with transaction.atomic():
-        user.password = password
-        user.groups.add(3)
-        user.address.save()
-        user.tariff_plan.save()
-        user.save()
-    message = MESSAGE % (user.first_name, password)
-    redis.lpush("sms_list", f"Sms for {user.address.pa}\n{message}")
+        reg_cache_model.user.password = password
+        reg_cache_model.user.tariff_plan.save()
+        reg_cache_model.user.save()
+        reg_cache_model.user.groups.add(3)
+        reg_cache_model.user.address.save()
+    message = MESSAGE % (reg_cache_model.user.first_name, password)
+    redis.lpush("sms_list", f"Sms for {reg_cache_model.user.address.pa}\n{message}")
     redis.ltrim("sms_list", 0, 9)
-    LOGGER.info(MESSAGE % (user.first_name, "*" * 9))
+    LOGGER.info(MESSAGE % (reg_cache_model.user.first_name, "*" * 9))
     # api.send_sms(int(user.phone.replace('+', '')), message)
-    return user, payment
+    return payment_value
 
 
 @app.task()

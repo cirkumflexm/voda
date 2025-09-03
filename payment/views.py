@@ -108,14 +108,13 @@ class CreateForTestTariff(GenericAPIView):
             user_email=reg_cache_model.user.email,
             user_id=reg_cache_model.user.address.pa,
             tariff_id=reg_cache_model.user.tariff_plan.id,
-            return_url="https://v.zesu.ru/",
             currency="RUB"
         )
         __result = __response["response_data"]
         __task = chain(
-            check.s(__result['id'], serialize.data['id']),
-            task_create_account.s(),
-            complete.s(__result['id'])
+            check.s(__result['id']),
+            task_create_account.s(serialize.data['id']),
+            complete.s(__result['id'], serialize.data['id'])
         )
         __task.apply_async()
         __result["tariff"] = TariffPlanSerializer(reg_cache_model.user.tariff_plan).data
