@@ -73,6 +73,6 @@ def task_tariff_activate_loop(self: Task) -> None:
         self.retry(countdown=0)
 
 
-# @worker_ready.connect
-# def startup(*args, **kw) -> None:
-#     group(task_tariff_activate_loop.s() for _ in range(1)).apply_async()
+@worker_ready.connect
+def startup(*args, **kw) -> None:
+    group(task_tariff_activate_loop.s() for _ in range(1)).apply_async()

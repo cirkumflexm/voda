@@ -57,10 +57,12 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
     # password = b64encode(token_bytes(9)).decode()
     password = "test"
-    with transaction.atomic():
+    with (transaction.atomic()):
         reg_cache_model.user.password = password
         reg_cache_model.user.tariff_plan.owner_id = 5
-        Main(reg_cache_model.user, payment_id).add_balance(payment_value)
+        _main = Main(reg_cache_model.user, payment_id)
+        _main.add_balance(payment_value)
+        _main.activate()
         reg_cache_model.user.tariff_plan.save()
         reg_cache_model.user.save()
         reg_cache_model.user.groups.add(3)
