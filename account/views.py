@@ -126,7 +126,7 @@ class LoginOperator(APIView):
         summary="Авторизация для операторов",
         request=AuthorizationOperator,
         responses={
-            200: TargetResposneSerializer()
+            200: AuthorizationResponse()
         }
     )
     def post(self, request: Request) -> Response:
@@ -140,7 +140,15 @@ class LoginOperator(APIView):
 
 @extend_schema(
     summary="Регистрация",
-    description="только ру номера: +7",
+    description="""
+/account/registration/ указываем фио, номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
+
+/payment/test-tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
+ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
+
+смс придет на тестовый api /account/temp-test/_get_sms_list_    
+    
+""",
     responses={
         200: RegistrationUserResponse(),
         401: OpenApiResponse()

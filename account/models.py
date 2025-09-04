@@ -27,7 +27,7 @@ class User(AbstractUser):
     )
     next_tariff_plan = models.ForeignKey(
         "tariff.TariffPlan", verbose_name="Следующий тариф", blank=True,
-        on_delete=models.SET_NULL, null=True, related_name="next_tariff_planes"
+        on_delete=models.PROTECT, null=True, related_name="next_tariff_planes"
     )
     auto_payment = models.BooleanField(verbose_name="Автооплата", default=False)
     start_datetime_pp = models.DateTimeField(verbose_name="Дата&Время начала оплаченного периода", blank=True, null=True)

@@ -27,6 +27,10 @@ TARIFF_IS_NULL = CustomException("TARIFF_IS_NULL", "Тариф не опреде
 class BaseMain:
     def __init__(self, user: User, payment_id: str = None) -> None:
         self.user = user
+        if isinstance(self.user.balance, float):
+            self.user.balance = Decimal(self.user.balance)
+        if isinstance(self.user.tariff_plan.price, float):
+            self.user.tariff_plan.price = Decimal(self.user.tariff_plan.price)
         self.now_datetime = timezone.now()
         self.payment_id = payment_id
 

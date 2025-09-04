@@ -22,13 +22,14 @@ def tariff_activate(user: User) -> None:
 def set_next_tariff(user: User) -> None:
     if user.next_tariff_plan:
         user.tariff_plan = user.next_tariff_plan
-        user.next_tariff_plan = None
 
 
 def complete_tariff(user: User) -> None:
     user.ws_status = False
     user.end_datetime_pp = None
     user.start_datetime_pp = None
+    if not user.tariff_plan.is_test:
+        user.tariff_plan.archive = False
 
 
 @app.task()
@@ -43,11 +44,8 @@ def task_tariff_activate_loop(self: Task) -> None:
             for user in User.objects \
                     .select_for_update(skip_locked=True) \
                     .filter(
-                        Q(end_datetime_pp__lt = timezone.now()) | \
-                            Q(end_datetime_pp__isnull=True),
-                        groups__id=3,
-                        tariff_plan__isnull=False,
-                        ws_status=True
+                        end_datetime_pp__lt = timezone.now(),
+                        groups__id = 3
                     ) \
                     .only(
                         'balance',
@@ -69,6 +67,7 @@ def task_tariff_activate_loop(self: Task) -> None:
                 if user.auto_payment:
                     tariff_activate(user)
                 user.save()
+                user.tariff_plan.save()
     finally:
         self.retry(countdown=0)
 

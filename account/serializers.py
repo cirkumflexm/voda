@@ -53,7 +53,7 @@ class Logout(serializers.Serializer):
 
 
 class UserSerializeBase(serializers.ModelSerializer, GetPa):
-    pa = serializers.SerializerMethodField()
+    pa = GetPa.pa
     address = serializers.SerializerMethodField()
 
     class Meta:
@@ -102,8 +102,8 @@ class UserSerializerPatch(UserSerializerPost):
     pass
 
 
-class DataSerializer(serializers.ModelSerializer):
-    pa = serializers.SerializerMethodField()
+class DataSerializer(serializers.ModelSerializer, GetPa):
+    pa = GetPa.pa
 
     class Meta:
         model = User
@@ -127,7 +127,7 @@ class TargetResposneSerializer(serializers.Serializer):
 class DoubleAuthenticationSerializer(TargetResposneSerializer):
     target = None
     method = None
-    code = serializers.CharField(min_length=6, max_length=6)
+    code = serializers.CharField(min_length=6, max_length=6, label="Код")
 
 
 # ------------------------------------

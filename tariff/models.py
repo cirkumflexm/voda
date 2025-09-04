@@ -33,7 +33,6 @@ class TariffPlan(models.Model):
             ("year", "год")
         )
     )
-    owner = models.ForeignKey("account.User", on_delete=models.CASCADE, null=True, related_name="tariff_choices")
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
 
     class Meta:
@@ -64,7 +63,6 @@ class TariffPlan(models.Model):
             name="Тестовый тариф",
             price=1.00,
             unit_measurement="day",
-            owner=user,
             is_test=True
         )
         test_tariff_plan.uuid = uuid4()

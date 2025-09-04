@@ -1,27 +1,20 @@
 
 import logging
 from base64 import b64encode
-
 from os import getenv
 from random import randint
 from secrets import token_bytes
-from time import sleep
-from typing import Optional
 
-from celery import Task, chain
-from celery.signals import worker_ready
+from celery import Task
+from django.contrib.auth.hashers import make_password
 from django.core.cache import cache
 from django.db import transaction
+from dotenv import load_dotenv
 from redis import Redis
 from smsaero import SmsAero
-from dotenv import load_dotenv
-from yookassa.domain.response import PaymentResponse
 
-from account.models import User, RegistrationCacheModel
-from address.models import Address
-
+from account.models import RegistrationCacheModel
 from config.celery import app
-from tariff.models import TariffPlan
 from tariff.src.tools import Main
 
 load_dotenv()
@@ -53,26 +46,26 @@ create_account: Task
 redis = Redis(db=1)
 
 @app.task
-def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> float:
+def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> None:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
-    # password = b64encode(token_bytes(9)).decode()
-    password = "test"
-    with (transaction.atomic()):
-        reg_cache_model.user.password = password
-        reg_cache_model.user.tariff_plan.owner_id = 5
-        _main = Main(reg_cache_model.user, payment_id)
-        _main.add_balance(payment_value)
-        _main.activate()
+    password = b64encode(token_bytes(9)).decode()
+    with transaction.atomic():
+        reg_cache_model.user.password = make_password(password)
         reg_cache_model.user.tariff_plan.save()
         reg_cache_model.user.save()
         reg_cache_model.user.groups.add(3)
         reg_cache_model.user.address.save()
+        _main = Main(reg_cache_model.user, payment_id)
+        _main.add_balance(payment_value)
+        _main.activate()
+        reg_cache_model.user.save()
+        reg_cache_model.user.tariff_plan.save()
     message = MESSAGE % (reg_cache_model.user.first_name, password)
     redis.lpush("sms_list", f"Sms for {reg_cache_model.user.address.pa}\n{message}")
     redis.ltrim("sms_list", 0, 9)
     LOGGER.info(MESSAGE % (reg_cache_model.user.first_name, "*" * 9))
     # api.send_sms(int(user.phone.replace('+', '')), message)
-    return payment_value
+    cache.delete(cache_id)
 
 
 @app.task()

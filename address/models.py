@@ -35,5 +35,4 @@ class Address(models.Model):
             return (super().__getattribute__(item) or '').lower()
         elif item == 'street':
             return super().__getattribute__('street').title()
-        else:
-            return super().__getattribute__(item)
+        return super().__getattribute__(item)
