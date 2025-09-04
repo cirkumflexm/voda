@@ -1,11 +1,16 @@
-from django.db.models import QuerySet, Q
-from rest_framework import viewsets, permissions
+from django.contrib.postgres.search import TrigramSimilarity
+from django.db.models import QuerySet
+from django.db.models.functions import Cast
+from drf_spectacular.utils import extend_schema
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.request import Request
+from rest_framework.response import Response
 
-from config.permissions import HighLevelLpansOrRead
-from .serializers import AddressSerialize
+from .models import Address
+from .serializers import AddressSerializeBase, AddressSerializeOther, AddressSerializeList, RequestQuery
 from account.models import User
+
 
 
 class Pagination(LimitOffsetPagination):
@@ -13,24 +18,19 @@ class Pagination(LimitOffsetPagination):
     default_limit = 30
 
 
-class AddressView(viewsets.ReadOnlyModelViewSet):
-    queryset = User.objects.filter(groups__id=3)
-    pagination_class = Pagination
-    serializer_class = AddressSerialize
-    permission_classes = [permissions.IsAuthenticated, HighLevelLpansOrRead]
-    lookup_field = 'personal_account'
+@extend_schema(
+    summary="Список адресов",
+    parameters=[RequestQuery]
+)
+class AddressView(ListAPIView):
+    queryset = Address.objects \
+        .filter(apartment='') \
+        .only('pa', 'join')
+    serializer_class = AddressSerializeList
+    lookup_field = "query"
 
     def get_queryset(self) -> QuerySet:
-        queryset = self.queryset \
-            .filter(address__isnull=False) \
-            .only(
-            'personal_account',
-                'address',
-                'apartment',
-                'first_name',
-                'last_name'
-            ) \
-            .order_by('id')
-        if self.request.user.groups.filter(id=3).exists():
-            queryset = queryset.filter(id=self.request.user.id)
-        return queryset
+        query = self.request.GET.get('query', 'а')
+        return self.queryset \
+            .annotate(similarity=TrigramSimilarity('join', query)) \
+            .order_by('-similarity')[:10]

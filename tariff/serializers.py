@@ -1,12 +1,13 @@
 
 from rest_framework import serializers
 
-from config.tools import GetPaBase
+from account.models import User
+from config.tools import GetPa, Pa
 from .models import *
 
 
-class TariffPlanSerializer(serializers.ModelSerializer, GetPaBase):
-    pa = serializers.SerializerMethodField(label="Принадлежит")
+class TariffPlanSerializer(serializers.ModelSerializer, GetPa):
+    pa = GetPa.pa
 
     class Meta:
         model = TariffPlan
@@ -17,8 +18,7 @@ class TariffPlanSerializer(serializers.ModelSerializer, GetPaBase):
 
 class TariffPlanSerializerWithoutOwner(TariffPlanSerializer):
     class Meta(TariffPlanSerializer.Meta):
-        fields = TariffPlanSerializer.Meta.fields.copy()
-        fields.remove('pa')
+        fields = TariffPlanSerializer.Meta.fields
         allows = ['GET']
 
 

@@ -126,7 +126,7 @@ class LoginOperator(APIView):
         summary="Авторизация для операторов",
         request=AuthorizationOperator,
         responses={
-            200: TargetResposneSerializer()
+            200: AuthorizationResponse()
         }
     )
     def post(self, request: Request) -> Response:
@@ -140,7 +140,15 @@ class LoginOperator(APIView):
 
 @extend_schema(
     summary="Регистрация",
-    description="только ру номера: +7",
+    description="""
+/account/registration/ указываем фио, номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
+
+/payment/test-tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
+ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
+
+смс придет на тестовый api /account/temp-test/_get_sms_list_    
+    
+""",
     responses={
         200: RegistrationUserResponse(),
         401: OpenApiResponse()
@@ -155,14 +163,20 @@ class RegistrationView(GenericAPIView):
         assert not User.objects \
             .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
             .exists(), "Номер уже зарегистрирован."
-        address = Address(**serializer.data['address'])
-        user = User(**(serializer.data | dict(address=address)))
+        address = Address.objects.get(pa=int(serializer.data['address']['pa']))
+        user_address = Address(
+            apartment=serializer.data['address']['apartment'],
+            house=address.house,
+            street=address.street,
+            building=address.building,
+            fias=address.fias
+        )
+        user = User(**(serializer.data | dict(address=user_address)))
         tariff_plan = TariffPlan.create_test_tariff_plan(user)
         registration_user_response = RegistrationUserResponse({
-            'pa': address.pa,
-            'new': not Address.objects \
-                .filter(pa=int(address.pa)) \
-                .exists(),
+            'pa': user_address.pa,
+            'new': Address.objects \
+                .filter(pa=user_address.pa).exists(),
             'tariff_plan': tariff_plan,
             'id': uuid4()
         }).data

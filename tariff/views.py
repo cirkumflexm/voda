@@ -57,8 +57,7 @@ class TariffPlanPermissionGroup(PermissionGroup):
 )
 class TariffPlanView(viewsets.ModelViewSet):
     queryset = TariffPlan.objects \
-        .select_related('owner') \
-        .annotate(pa=F('owner__address')) \
+        .annotate(pa=F('tariff_planes__address')) \
         .order_by('id')
     serializer_class = TariffPlanSerializer
     permission_classes = [TariffPlanPermissionGroup, IsAuthenticated]

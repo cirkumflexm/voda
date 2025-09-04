@@ -2,15 +2,15 @@
 from rest_framework import serializers
 
 from account.models import User
-from address.serializers import AddressSerializeChange
-from config.tools import GetPaBase
+from address.serializers import ForRegistrationAddress, AddressSerializeChange
+from config.tools import GetPa
 from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutOwner
 from phonenumber_field.serializerfields import PhoneNumberField
 
 
 class Authorization(serializers.Serializer):
-    login = serializers.CharField()
-    password = serializers.CharField()
+    login = serializers.CharField(label="Логин")
+    password = serializers.CharField(label="Пароль")
     target = serializers.CharField(default="code", label="След. операция")
     method = serializers.ChoiceField(default="sms", choices=(
         ('sms', 'код по смс'),
@@ -26,25 +26,16 @@ class AuthorizationOperator(Authorization):
     method = None
 
 
-class AddressSerializeChangeWithoutFias(AddressSerializeChange):
-    house = serializers.CharField(required=True)
-
-    class Meta(AddressSerializeChange.Meta):
-        fields = AddressSerializeChange.Meta.fields
-        fields.remove('fias')
-        fields.remove('join')
-
-
 class RegistrationUser(serializers.Serializer):
     phone = PhoneNumberField(label="Телефон", region='RU')
     first_name = serializers.CharField(label="Имя")
     last_name = serializers.CharField(label="Фамилия")
-    address = AddressSerializeChangeWithoutFias(label="Адрес")
+    address = ForRegistrationAddress(label="Адрес")
 
 
 class RegistrationUserResponse(serializers.Serializer):
     pa = serializers.CharField(label="Лицевой счет")
-    new = serializers.BooleanField(label="Активирован ранее")
+    new = serializers.BooleanField(label="Не активирован ранее")
     status = serializers.CharField(default="Успешно!", label="Статус")
     action = serializers.CharField(default="registration", label="Действие")
     id = serializers.UUIDField(label="Id операции")
@@ -61,8 +52,8 @@ class Logout(serializers.Serializer):
     refresh = serializers.CharField()
 
 
-class UserSerializeBase(serializers.ModelSerializer, GetPaBase):
-    pa = serializers.SerializerMethodField()
+class UserSerializeBase(serializers.ModelSerializer, GetPa):
+    pa = GetPa.pa
     address = serializers.SerializerMethodField()
 
     class Meta:
@@ -111,8 +102,8 @@ class UserSerializerPatch(UserSerializerPost):
     pass
 
 
-class DataSerializer(serializers.ModelSerializer):
-    pa = serializers.SerializerMethodField()
+class DataSerializer(serializers.ModelSerializer, GetPa):
+    pa = GetPa.pa
 
     class Meta:
         model = User
@@ -136,7 +127,7 @@ class TargetResposneSerializer(serializers.Serializer):
 class DoubleAuthenticationSerializer(TargetResposneSerializer):
     target = None
     method = None
-    code = serializers.CharField(min_length=6, max_length=6)
+    code = serializers.CharField(min_length=6, max_length=6, label="Код")
 
 
 # ------------------------------------

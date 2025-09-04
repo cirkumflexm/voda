@@ -19,19 +19,23 @@ class CustomException(AssertionError):
         return self.args[1]
 
 
-NOT_ENOUGH_FUNDS = CustomException("NotEnoughFunds", "Недостаточно средств")
-COUNT_NOT_ZERO = CustomException("COUNT_NOT_ZERO", "Пополняемое средство не может быть нулем")
-TARIFF_IS_NULL = CustomException("TARIFF_IS_NULL", "Тариф не определен")
+NOT_ENOUGH_FUNDS = CustomException("NotEnoughFunds", "Недостаточно средств.")
+COUNT_NOT_ZERO = CustomException("COUNT_NOT_ZERO", "Пополняемое средство не может быть нулем.")
+TARIFF_IS_NULL = CustomException("TARIFF_IS_NULL", "Тариф не определен.")
 
 
 class BaseMain:
     def __init__(self, user: User, payment_id: str = None) -> None:
         self.user = user
+        if isinstance(self.user.balance, float):
+            self.user.balance = Decimal(self.user.balance)
+        if isinstance(self.user.tariff_plan.price, float):
+            self.user.tariff_plan.price = Decimal(self.user.tariff_plan.price)
         self.now_datetime = timezone.now()
         self.payment_id = payment_id
 
     def add_balance(self, count: float) -> None:
-        self.user.balance += Decimal(count)
+        self.user.balance = Decimal(count) + Decimal(self.user.balance)
         QuerySet(Payment).create(
             user=self.user,
             quantity=Decimal(count),
@@ -39,8 +43,6 @@ class BaseMain:
         )
 
     def activate(self) -> None:
-        if self.user.tariff_plan.is_test:
-            self.user.is_new = False
         self.user.balance -= self.user.tariff_plan.price
         self.user.start_datetime_pp = self.now_datetime
         self.user.end_datetime_pp = self.now_datetime + {
@@ -93,10 +95,33 @@ class VerificationOfFunds(ActivateOrExtend):
 
 class VerificationOfTariff(VerificationOfFunds):
     def activate(self) -> None:
-        if self.user.tariff_plan is None or self.user.tariff_plan.archive:
-            raise TARIFF_IS_NULL
-        return super().activate()
+        try:
+            if self.user.tariff_plan is None or self.user.tariff_plan.archive:
+                raise TARIFF_IS_NULL
+            self.user.tariff_plan.archive = True
+            super().activate()
+            if self.user.is_new:
+                self.user.is_new = False
+        except:
+            self.user.tariff_plan.archive = False
+            raise
 
 
 class Main(VerificationOfTariff):
-    pass
+    """
+    using:
+        User.balance
+        User.tariff_plan
+        User.tariff_plan.archive
+        User.tariff_plan.price
+        User.ws_status
+        User.tariff_plan.unit_measurement
+        User.balance
+        User.start_datetime_pp
+        User.end_datetime_pp
+        User.start_datetime_pp
+        User.is_new
+        User.next_tariff_plan
+
+        User, Tariff
+    """

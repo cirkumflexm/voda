@@ -1,23 +1,23 @@
-
+from django.core.cache import cache
 from yookassa.domain.response import PaymentResponse
-
-from config.celery import app
-from yookassa import Payment
-
-from account.models import User
+from yookassa.domain.exceptions.not_found_error import NotFoundError
+from account.models import User, RegistrationCacheModel
 from tariff.src.tools import Main
+from config.celery import app
+from account.tasks import task_create_account
+from .service import *
 
 
-@app.task(autoretry_for=(AssertionError,), max_retries=120, countdown=5)
-def check(payment_id: str, user: User) -> tuple[User, PaymentResponse]:
-    payment = Payment.find_one(payment_id)
+@app.task(autoretry_for=(AssertionError, ), max_retries=120, default_retry_delay=5)
+def check(payment_id: str) -> float:
+    payment = find_payment(payment_id=payment_id)
     assert payment.status == "succeeded", "Оплата не готова."
-    return user, payment
+    return float(payment.amount.value)
 
 
-@app.task()
-def complete(user: User, payment: PaymentResponse, payment_id: str) -> User:
-    Main(user, payment_id). \
-        add_balance(float(payment.amount.value))
-    user.save()
-    return user
+@app.task
+def complete(value: float, payment_id: str, cache_id: str) -> None:
+    reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
+    Main(reg_cache_model.user, payment_id).add_balance(value)
+    reg_cache_model.user.save(update_fields=("balance",))
+    cache.delete(cache_id)

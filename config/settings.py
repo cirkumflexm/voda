@@ -28,7 +28,7 @@ SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['v.zesu.ru']
+ALLOWED_HOSTS = ['v.zesu.ru', '127.0.0.1']
 
 # Application definition
 
@@ -88,12 +88,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'project_db',
         'USER': 'project_user',
         'PASSWORD': 'vm89DDF77GDDD4a9B9f0',
-        'HOST': '127.0.0.1',
+        'HOST': '95.183.8.42',
         'PORT': '5432',
+        'TIME_ZONE': 'Europe/Moscow'
     }
 }
 
@@ -122,7 +123,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'ru-Ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
 
@@ -224,13 +225,3 @@ SPECTACULAR_SETTINGS = {
 CELERY_BROKER_URL = 'redis://localhost:6379'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379'
 
-CELERY_BEAT_SCHEDULE = {
-    'run-tariff-renewal-loop': {
-        'task': 'tariff.tasks.task_tariff_renewal_loop',
-        'schedule': crontab(minute='10,30'),
-    },
-    'run-tariff-activate-loop': {
-        'task': 'tariff.tasks.task_tariff_activate_loop',
-        'schedule': crontab(minute='30,50'),
-    },
-}
