@@ -1,0 +1,499 @@
+openapi: 3.0.3
+info:
+  title: ВСЕ API
+  version: 0.0.1
+  description: "\n        Operators:\n            - \"TestOp1\"\n            - \"\
+    TestOp2\"\n        Password - \"Password\"\n    "
+paths:
+  /account/login/:
+    post:
+      operationId: account_login_create
+      summary: Авторизация
+      tags:
+      - account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AuthorizationRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AuthorizationRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationResponseOk'
+          description: ''
+        '401':
+          description: No response body
+  /account/logout/:
+    post:
+      operationId: account_logout_create
+      summary: Выход
+      tags:
+      - account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationResponseOk'
+          description: ''
+        '401':
+          description: No response body
+  /account/token/refresh/:
+    post:
+      operationId: account_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /payment/check/:
+    post:
+      operationId: payment_check_create
+      description: раз в 5 секунд, иначе 429
+      summary: Проверить оплату и получить результат
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /payment/create/:
+    get:
+      operationId: payment_create_retrieve
+      summary: Создать и получить ссылку для оплаты
+      tags:
+      - payment
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /source/tariffs/:
+    get:
+      operationId: source_tariffs_list
+      summary: Получить список тарифов
+      tags:
+      - source
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TariffPlan'
+          description: ''
+    post:
+      operationId: source_tariffs_create
+      summary: Добавить тариф
+      tags:
+      - source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffPlan'
+          description: ''
+  /source/tariffs/{id}/:
+    get:
+      operationId: source_tariffs_retrieve
+      summary: Получить тариф
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Тариф.
+        required: true
+      tags:
+      - source
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffPlan'
+          description: ''
+    put:
+      operationId: source_tariffs_update
+      summary: Изменить признак активности
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Тариф.
+        required: true
+      tags:
+      - source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TariffPlanRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TariffPlan'
+          description: ''
+  /source/users/:
+    get:
+      operationId: source_users_list
+      summary: Получить список пользователей
+      tags:
+      - source
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: source_users_create
+      summary: Добавить пользователя
+      tags:
+      - source
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /source/users/{id}/:
+    get:
+      operationId: source_users_retrieve
+      summary: Получить пользователя
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Пользователь.
+        required: true
+      tags:
+      - source
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+components:
+  schemas:
+    AuthorizationRequest:
+      type: object
+      properties:
+        personal_account:
+          type: string
+          minLength: 1
+          title: Лс счет
+          maxLength: 24
+        password:
+          type: string
+          minLength: 1
+          title: Пароль
+          maxLength: 128
+      required:
+      - password
+    AuthorizationResponseOk:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+      required:
+      - access
+      - refresh
+    LogoutRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    TariffPlan:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Название
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          title: Поле Цена в рублях
+        archive:
+          type: boolean
+          title: Признак архивности
+        unit_measurement:
+          allOf:
+          - $ref: '#/components/schemas/UnitMeasurementEnum'
+          title: Единица измерения
+      required:
+      - id
+      - name
+      - price
+      - unit_measurement
+    TariffPlanRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          title: Название
+          maxLength: 255
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          title: Поле Цена в рублях
+        archive:
+          type: boolean
+          title: Признак архивности
+        unit_measurement:
+          allOf:
+          - $ref: '#/components/schemas/UnitMeasurementEnum'
+          title: Единица измерения
+      required:
+      - name
+      - price
+      - unit_measurement
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    UnitMeasurementEnum:
+      enum:
+      - day
+      - month
+      - quarter
+      - halfyear
+      - year
+      type: string
+      description: |-
+        * `day` - день
+        * `month` - месяц
+        * `quarter` - квартал
+        * `halfyear` - полгода
+        * `year` - год
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        username:
+          type: string
+          readOnly: true
+          title: Имя пользователя
+          description: Обязательное поле. Не более 150 символов. Только буквы, цифры
+            и символы @/./+/-/_.
+        address:
+          type: string
+          title: Адрес
+          maxLength: 255
+        apartment:
+          type: string
+          nullable: true
+          title: Квартира
+          maxLength: 11
+        fias:
+          type: string
+          title: ФИАС
+          maxLength: 47
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,13}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Баланс
+        ws_status:
+          type: boolean
+          readOnly: true
+          title: Статус подачи воды
+        tariff_plan:
+          type: integer
+          nullable: true
+          title: Тариф
+        start_datetime_pp:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Дата&Время начала оплаченного периода
+        end_datetime_pp:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Дата&Время конца оплаченного периода
+      required:
+      - balance
+      - end_datetime_pp
+      - id
+      - start_datetime_pp
+      - username
+      - ws_status
+    UserRequest:
+      type: object
+      properties:
+        first_name:
+          type: string
+          title: Имя
+          maxLength: 150
+        last_name:
+          type: string
+          title: Фамилия
+          maxLength: 150
+        address:
+          type: string
+          minLength: 1
+          title: Адрес
+          maxLength: 255
+        apartment:
+          type: string
+          nullable: true
+          minLength: 1
+          title: Квартира
+          maxLength: 11
+        fias:
+          type: string
+          minLength: 1
+          title: ФИАС
+          maxLength: 47
+        tariff_plan:
+          type: integer
+          nullable: true
+          title: Тариф
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
