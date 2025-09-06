@@ -38,14 +38,6 @@ class AddressSerializeList(serializers.ModelSerializer, GetPa):
         return str(model.join)
 
 
-class ForRegistrationAddress(serializers.ModelSerializer, Pa):
-    pa = Pa.pa
-
-    class Meta:
-        model = Address
-        fields = ('apartment', 'pa')
-
-
 class AddressSerializeChange(AddressSerializeBase):
     class Meta(AddressSerializeBase.Meta):
         fields = AddressSerializeBase.Meta.fields + [

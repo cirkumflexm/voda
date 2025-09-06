@@ -79,7 +79,7 @@ class DoubleAuthentication(generics.GenericAPIView):
             code, pa = task.result
             if code is None or code == request.data['code']:
                 task.revoke()
-                return release(request, User.objects.get(personal_account=pa))
+                return release(request, User.objects.get(address_id=pa))
         return Response("Код введен неверно.", status=403)
 
 
@@ -99,18 +99,14 @@ class LoginAPIView(APIView):
             password = serialize.data['password']
             if not (_login and password):
                 return Response("Данные введены некорректно.", status=400)
-            phone = sub(PHONE_COMPILE, "", _login)
-            phone = int(phone) if phone else -1
-            user = User.objects.filter(
-                Q(username=_login) |
-                Q(personal_account=_login) |
-                Q(email=_login) |
-                Q(phone=phone)
-            ).first()
+            if _login.isnumeric():
+                user = User.objects.filter(Q(address_id=int(_login)) | Q(phone=_login)).first()
+            else:
+                user = User.objects.filter(phone=_login).first()
             if not (user and check_password(password, user.password)):
                 return Response("Неправильно введен логин или пароль.", status=401)
             is_user = user.groups.filter(id=3).exists()
-            result = send_sms_code.delay(user.phone, is_user, user.personal_account)
+            result = send_sms_code.delay(user.phone, is_user, user.address_id)
             return Response({
                 "target": serialize.data['target'],
                 "method": serialize.data['method'],
@@ -141,13 +137,12 @@ class LoginOperator(APIView):
 @extend_schema(
     summary="Регистрация",
     description="""
-/account/registration/ указываем фио, номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
+/account/registration/ указываем номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
 
 /payment/test-tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
 ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
 
-смс придет на тестовый api /account/temp-test/_get_sms_list_    
-    
+смс придет на тестовый api /account/temp-test/get_sms_list
 """,
     responses={
         200: RegistrationUserResponse(),
@@ -163,15 +158,22 @@ class RegistrationView(GenericAPIView):
         assert not User.objects \
             .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
             .exists(), "Номер уже зарегистрирован."
-        address = Address.objects.get(pa=int(serializer.data['address']['pa']))
+        address = Address.objects.get(pa=int(serializer.data['pa']))
         user_address = Address(
-            apartment=serializer.data['address']['apartment'],
+            apartment=serializer.data['apartment'],
             house=address.house,
             street=address.street,
             building=address.building,
             fias=address.fias
         )
-        user = User(**(serializer.data | dict(address=user_address)))
+        user_address.pa = user_address.get_pa()
+        user_address.join = user_address.get_join()
+        user = User(
+            phone = serializer.data['phone'],
+            first_name = "",
+            last_name = "",
+            address = user_address
+        )
         tariff_plan = TariffPlan.create_test_tariff_plan(user)
         registration_user_response = RegistrationUserResponse({
             'pa': user_address.pa,

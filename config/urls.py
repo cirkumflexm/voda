@@ -29,4 +29,5 @@ urlpatterns = [
     path('account/', include(('account.urls', 'account')), name="account"),
     path('device/', include(('device.urls', 'device')), name="device"),
     path('address/', include(('address.urls', 'address')), name="address"),
+    path('promo/', include(('promo.urls', 'promo')), name="promo"),
 ]

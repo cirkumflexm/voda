@@ -48,7 +48,8 @@ INSTALLED_APPS = [
     'tariff',
     'payment',
     'device',
-    'address'
+    'address',
+    'promo'
 ]
 
 MIDDLEWARE = [

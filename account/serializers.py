@@ -2,9 +2,10 @@
 from rest_framework import serializers
 
 from account.models import User
-from address.serializers import ForRegistrationAddress, AddressSerializeChange
-from config.tools import GetPa
-from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutOwner
+from address.models import Address
+from address.serializers import AddressSerializeChange, AddressSerializeList
+from config.tools import GetPa, Pa
+from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutPa
 from phonenumber_field.serializerfields import PhoneNumberField
 
 
@@ -28,9 +29,8 @@ class AuthorizationOperator(Authorization):
 
 class RegistrationUser(serializers.Serializer):
     phone = PhoneNumberField(label="Телефон", region='RU')
-    first_name = serializers.CharField(label="Имя")
-    last_name = serializers.CharField(label="Фамилия")
-    address = ForRegistrationAddress(label="Адрес")
+    apartment = serializers.CharField(label="Квартира")
+    pa = Pa.pa
 
 
 class RegistrationUserResponse(serializers.Serializer):
@@ -39,7 +39,7 @@ class RegistrationUserResponse(serializers.Serializer):
     status = serializers.CharField(default="Успешно!", label="Статус")
     action = serializers.CharField(default="registration", label="Действие")
     id = serializers.UUIDField(label="Id операции")
-    tariff_plan = TariffPlanSerializerWithoutOwner(read_only=True, label="Тариф")
+    tariff_plan = TariffPlanSerializerWithoutPa(read_only=True, label="Тариф")
     method = serializers.CharField(label="Метод", default="payment")
 
 
