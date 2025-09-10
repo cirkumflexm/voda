@@ -28,6 +28,7 @@ class PromoCheckView(RetrieveAPIView):
             .filter(label=promo) \
             .first()
         request.user.tariff_plan = data.tariff_plan
+        request.user.save(force_update=('tariff_plan',))
         request.user.tariffs.add(request.user.tariff_plan)
         serializer = self.get_serializer(data)
         return Response(data=serializer.data)
