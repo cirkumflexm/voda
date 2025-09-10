@@ -40,3 +40,9 @@ class ActivationTestTariffSerializer(serializers.Serializer):
     class Meta:
         fields = '__all__'
         read_only_fields = '__all__'
+
+
+class CutTariffSerializer(TariffPlanSerializer):
+    class Meta(TariffPlanSerializer.Meta):
+        fields = ['uuid', 'name', 'price', 'unit_measurement']
+        read_only_fields = ['uuid', 'is_test']

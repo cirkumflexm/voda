@@ -4,6 +4,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
 
 from account.models import User
+from config.permissions import get_permission_group
 from device.models import Device, Definition
 from .serializers import DeviceSerializer, UserGroupDefinitionSerializer, \
     DefinitionSerializerGet, DefinitionSerializerSet
@@ -14,15 +15,10 @@ class Pagination(LimitOffsetPagination):
     default_limit = 30
 
 
-class PermissionGroup(BasePermission):
-    def has_permission(self, request, view) -> bool:
-        return request.user.groups.filter(id__in=(1, 2)).exists()
-
-
 class DeviceView(viewsets.ModelViewSet):
     queryset = Device.objects.order_by('id')
     serializer_class = DeviceSerializer
-    permission_classes = [IsAuthenticated, PermissionGroup]
+    permission_classes = [IsAuthenticated, get_permission_group(1, 2)]
     pagination_class = Pagination
     http_method_names = ['get', 'post', 'patch']
 
@@ -32,7 +28,7 @@ class DefinitionView(viewsets.ModelViewSet):
         .select_related('user', 'device', 'user__address') \
         .annotate(pa=F('user__address')) \
         .order_by('id')
-    permission_classes = [IsAuthenticated, PermissionGroup]
+    permission_classes = [IsAuthenticated, get_permission_group(1, 2)]
     pagination_class = Pagination
     http_method_names = ['get', 'post', 'patch']\
 

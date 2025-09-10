@@ -15,7 +15,7 @@ from django.db import models
 
 
 class TariffPlan(models.Model):
-    uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа")
+    uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа", auto_created=True)
     name = models.CharField(max_length=255, verbose_name="Название")
     price = models.DecimalField(
         verbose_name="Поле Цена в рублях", max_digits=15, decimal_places=2,
@@ -35,6 +35,7 @@ class TariffPlan(models.Model):
     )
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
 
+
     class Meta:
         verbose_name = "Тариф"
         verbose_name_plural = "Тарифы"
@@ -51,6 +52,7 @@ class TariffPlan(models.Model):
         ):
             raise ValueError("Неправильно указан временной промежуток. " 
                              "Требуется: (\"day\", \"month\", \"quarter\", \"halfyear\", \"year\").")
+        self.uuid = uuid4()
         super().save(*args, **kw)
 
     def __str__(self) -> str:

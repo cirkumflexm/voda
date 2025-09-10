@@ -20,6 +20,6 @@ def set_ws_status_on(user: User) -> None:
                 .filter(user=user, device__func="SET") \
                 .get()
     LOGGER.info(f"MX210/{encoard.device.name}/SET/"
-                f"DI{encoard.number}/1")
+                f"DO{encoard.number}/1")
     CLIENT.publish(f"MX210/{encoard.device.name}/SET/"
-                    f"DI{encoard.number}/1")
+                    f"DO{encoard.number}/1")
