@@ -28,9 +28,11 @@ class TariffPlan(models.Model):
         choices=(
             ("day", "день"),
             ("month", "месяц"),
+            ("two month", "два месяца"),
             ("quarter", "квартал"),
             ("halfyear", "полгода"),
-            ("year", "год")
+            ("year", "год"),
+            ("constant", "навсегда")
         )
     )
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)

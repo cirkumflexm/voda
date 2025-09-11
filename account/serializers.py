@@ -84,7 +84,8 @@ class UserSerializerPost(UserSerializeBase):
     class Meta(UserSerializeBase.Meta):
         fields = [
             'first_name', 'last_name', 'phone', 'email',
-            'address', 'tariff_plan', 'next_tariff_plan'
+            'address', 'tariff_plan', 'next_tariff_plan',
+            'auto_payment'
         ]
 
     def update(self, instance: User, validated_data: dict):

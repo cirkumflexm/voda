@@ -241,8 +241,6 @@ class Refresh(TokenRefreshView):
 )
 class UserView(viewsets.ModelViewSet):
     queryset = User.objects \
-        .select_related("tariff_plan") \
-        .select_related("address") \
         .annotate(pa=F('address')) \
         .filter(groups__id=3) \
         .order_by('id')

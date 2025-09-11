@@ -13,13 +13,11 @@ CLIENT = mqtt.Client()
 CLIENT.username_pw_set("u_XXKWLD", "HpaltpYw")
 
 
-def set_ws_status_on(user: User) -> None:
+def set_ws_status(user: User, switch: bool) -> None:
     encoard = QuerySet(Definition) \
-                .select_related("device") \
-                .select_related("user") \
                 .filter(user=user, device__func="SET") \
-                .get()
+                .first()
     LOGGER.info(f"MX210/{encoard.device.name}/SET/"
-                f"DO{encoard.number}/1")
+                f"DO{encoard.number}/{int(switch)}")
     CLIENT.publish(f"MX210/{encoard.device.name}/SET/"
-                    f"DO{encoard.number}/1")
+                    f"DO{encoard.number}/{int(switch)}")

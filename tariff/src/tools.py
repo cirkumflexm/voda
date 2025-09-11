@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.db.models import QuerySet
 
 from account.models import User
-from device.common import set_ws_status_on
+from device.common import set_ws_status
 from payment.models import Payment
 from tariff.models import TariffPlan, ServiceArchive
 
@@ -59,7 +59,7 @@ class BaseMain:
             tariff_plan=self.user.tariff_plan
         )
         self.user.tariff_plan.archive = True
-        # set_ws_status_on(self.user)
+        # set_ws_status(self.user, True)
         self.user.ws_status = True
 
     def extend(self) -> None:
@@ -67,9 +67,11 @@ class BaseMain:
         self.user.end_datetime_pp += {
             "day": relativedelta(days=1),
             "month": relativedelta(months=1),
+            "two month": relativedelta(months=2),
             "quarter": relativedelta(months=3),
             "halfyear": relativedelta(months=6),
             "year": relativedelta(years=1),
+            "constant": relativedelta(years=100)
         }[self.user.tariff_plan.unit_measurement]
 
 
