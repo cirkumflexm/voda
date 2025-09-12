@@ -1,4 +1,3 @@
-from typing import Any
 
 from django.contrib.postgres.indexes import BTreeIndex
 from django.db import models
@@ -17,22 +16,20 @@ class Address(models.Model):
         indexes = [BTreeIndex(fields=['join'])]
 
     def __str__(self) -> str:
-        return ', '.join(filter(bool, (
+        return self.get_join()
+
+    def get_pa(self) -> str:
+        return self.pa or f'{sum(map(ord, str(self))):0>12}'
+        
+    def get_join(self) -> str:
+        return self.join or ', '.join(filter(bool, (
             f'ул. {self.street}',
             f'д. {self.house}' if self.house else None,
             f'корп. {self.building}' if self.building else None,
             f'кв. {self.apartment}' if self.apartment else None
         )))
 
-    def __getattribute__(self, item: str) -> Any:
-        if item == 'pa':
-            return f'{sum(map(ord, str(self))):0>12}'
-        elif item in (
-            'house',
-            'building',
-            'apartment',
-        ):
-            return (super().__getattribute__(item) or '').lower()
-        elif item == 'street':
-            return super().__getattribute__('street').title()
-        return super().__getattribute__(item)
+    def save(self, *args, **kw) -> None:
+        self.pa = self.get_pa()
+        self.join = self.get_join()
+        super().save(*args, **kw)

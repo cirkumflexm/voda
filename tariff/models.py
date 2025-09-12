@@ -15,7 +15,7 @@ from django.db import models
 
 
 class TariffPlan(models.Model):
-    uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа")
+    uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа", auto_created=True)
     name = models.CharField(max_length=255, verbose_name="Название")
     price = models.DecimalField(
         verbose_name="Поле Цена в рублях", max_digits=15, decimal_places=2,
@@ -28,29 +28,22 @@ class TariffPlan(models.Model):
         choices=(
             ("day", "день"),
             ("month", "месяц"),
+            ("two month", "два месяца"),
             ("quarter", "квартал"),
             ("halfyear", "полгода"),
-            ("year", "год")
+            ("year", "год"),
+            ("constant", "навсегда")
         )
     )
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
+
 
     class Meta:
         verbose_name = "Тариф"
         verbose_name_plural = "Тарифы"
 
     def save(self, *args, **kw):
-        if self.price < Decimal('0.0'):
-            raise ValueError("Цена не может быть отрицательной.")
-        if self.unit_measurement not in (
-            "day",
-            "month",
-            "quarter",
-            "halfyear",
-            "year"
-        ):
-            raise ValueError("Неправильно указан временной промежуток. " 
-                             "Требуется: (\"day\", \"month\", \"quarter\", \"halfyear\", \"year\").")
+        self.uuid = uuid4()
         super().save(*args, **kw)
 
     def __str__(self) -> str:

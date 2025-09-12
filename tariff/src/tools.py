@@ -6,7 +6,7 @@ from django.utils import timezone
 from django.db.models import QuerySet
 
 from account.models import User
-from device.common import set_ws_status_on
+from device.common import set_ws_status
 from payment.models import Payment
 from tariff.models import TariffPlan, ServiceArchive
 
@@ -25,6 +25,16 @@ TARIFF_IS_NULL = CustomException("TARIFF_IS_NULL", "Тариф не опреде
 
 
 class BaseMain:
+    RANGE = {
+        "day": relativedelta(days=1),
+        "month": relativedelta(months=1),
+        "two month": relativedelta(months=2),
+        "quarter": relativedelta(months=3),
+        "halfyear": relativedelta(months=6),
+        "year": relativedelta(years=1),
+        "constant": relativedelta(years=100)
+    }
+
     def __init__(self, user: User, payment_id: str = None) -> None:
         self.user = user
         if isinstance(self.user.balance, float):
@@ -45,13 +55,7 @@ class BaseMain:
     def activate(self) -> None:
         self.user.balance -= self.user.tariff_plan.price
         self.user.start_datetime_pp = self.now_datetime
-        self.user.end_datetime_pp = self.now_datetime + {
-            "day": relativedelta(days=1),
-            "month": relativedelta(months=1),
-            "quarter": relativedelta(months=3),
-            "halfyear": relativedelta(months=6),
-            "year": relativedelta(years=1),
-        }[self.user.tariff_plan.unit_measurement]
+        self.user.end_datetime_pp = self.now_datetime + self.RANGE[self.user.tariff_plan.unit_measurement]
         QuerySet(ServiceArchive).create(
             user=self.user,
             start_datetime_pp=self.user.start_datetime_pp,
@@ -59,18 +63,12 @@ class BaseMain:
             tariff_plan=self.user.tariff_plan
         )
         self.user.tariff_plan.archive = True
-        # set_ws_status_on(self.user)
+        # set_ws_status(self.user, True)
         self.user.ws_status = True
 
     def extend(self) -> None:
         self.user.balance -= self.user.tariff_plan.price
-        self.user.end_datetime_pp += {
-            "day": relativedelta(days=1),
-            "month": relativedelta(months=1),
-            "quarter": relativedelta(months=3),
-            "halfyear": relativedelta(months=6),
-            "year": relativedelta(years=1),
-        }[self.user.tariff_plan.unit_measurement]
+        self.user.end_datetime_pp += self.RANGE[self.user.tariff_plan.unit_measurement]
 
 
 class ActivateOrExtend(BaseMain):
@@ -98,12 +96,13 @@ class VerificationOfTariff(VerificationOfFunds):
         try:
             if self.user.tariff_plan is None or self.user.tariff_plan.archive:
                 raise TARIFF_IS_NULL
-            self.user.tariff_plan.archive = True
+            # self.user.tariff_plan.archive = True
             super().activate()
             if self.user.is_new:
                 self.user.is_new = False
         except:
-            self.user.tariff_plan.archive = False
+            # self.user.tariff_plan.archive = False
+            ...
             raise
 
 

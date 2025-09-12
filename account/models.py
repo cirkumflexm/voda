@@ -34,9 +34,9 @@ class User(AbstractUser):
     end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", blank=True, null=True)
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
     is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
+    tariffs = models.ManyToManyField("tariff.TariffPlan", verbose_name="Все тарифы")
 
     definitions: QuerySet[Definition]
-    tariff_choices: QuerySet[TariffPlan]
 
     class Meta:
         verbose_name = "Пользователь"
@@ -44,6 +44,10 @@ class User(AbstractUser):
 
     def __str__(self) -> str:
         return self.username or f"{self.last_name} {self.first_name}"
+
+    def save(self, *args, **kw) -> None:
+        self.username = self.username or self.address.get_pa()
+        super().save(*args, **kw)
 
 
 @dataclass

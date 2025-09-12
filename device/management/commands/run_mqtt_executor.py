@@ -28,8 +28,6 @@ class Command(BaseCommand):
             LOGGER.info((msg.topic, msg.payload))
             name, ws_mask = msg.topic.split("/")[1], int(msg.payload, 2)
             encoads = QuerySet(Definition) \
-                .select_related("device") \
-                .select_related("user") \
                 .filter(device__name=msg.topic.split("/")[1]) \
                 .all()
             for encoad in encoads:
