@@ -52,10 +52,10 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
     with transaction.atomic():
         reg_cache_model.user.password = make_password(password)
         reg_cache_model.user.tariff_plan.save()
-        reg_cache_model.user.tariffs.add(reg_cache_model.user.tariff_plan)
         reg_cache_model.user.save()
         reg_cache_model.user.groups.add(3)
         reg_cache_model.user.address.save()
+        reg_cache_model.user.tariffs.add(reg_cache_model.user.tariff_plan)
         _main = Main(reg_cache_model.user, payment_id)
         _main.add_balance(payment_value)
         _main.activate()

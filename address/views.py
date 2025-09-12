@@ -28,6 +28,7 @@ class AddressView(ListAPIView):
         .only('pa', 'join')
     serializer_class = AddressSerializeList
     lookup_field = "query"
+    pagination_class = None
 
     def get_queryset(self) -> QuerySet:
         query = self.request.GET.get('query', 'а')

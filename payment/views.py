@@ -1,6 +1,7 @@
+from uuid import uuid4
+
 from celery import chain
 from django.core.cache import cache
-from django.db.models import QuerySet
 from django.http import HttpResponse
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -12,8 +13,8 @@ from account.tasks import task_create_account
 from account.models import User, RegistrationCacheModel
 from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse, CreateByIdParamsSerializer
 from tariff.serializers import TariffPlanSerializer
-from .models import Payment
-from .service import *
+from .models import Payment as ModelPayment
+from .service import Payment, ApiError, create_payment, find_payment
 from .tasks import check, complete
 
 
@@ -34,7 +35,7 @@ class Create(GenericAPIView):
     def get(self, request) -> Response:
         if not request.user.groups.filter(id=3).exists():
             return Response("", status=403)
-        return self.create(request)
+        return self.create(request.user, request)
 
     @extend_schema(
         summary="Создать и получить ссылку для оплаты [No authenticated]",
@@ -55,7 +56,7 @@ class Create(GenericAPIView):
     @staticmethod
     def create(user, request) -> Response:
         try:
-            __payment_id = QuerySet(Payment).filter(user=user).count()
+            __payment_id = ModelPayment.objects.filter(user=user).count()
             __response = create_payment(
                 num=__payment_id + 1,
                 price=user.tariff_plan.price,
@@ -65,11 +66,12 @@ class Create(GenericAPIView):
                 user_email=user.email,
                 user_id=user.id,
                 tariff_id=user.tariff_plan.id,
-                return_url="https://v.zesu.ru/",
                 currency="RUB"
             )
             __result = __response["response_data"]
-            __task = chain(check.s(__result['id'], user), complete.s(__result['id']))
+            # __cache_id = uuid4()
+            # cache.set(__cache_id, user)
+            __task = chain(check.s(__result['id']), complete.s(__result['id'], user.id))
             __task.apply_async()
             __result["tariff"] = TariffPlanSerializer(user.tariff_plan, context=request).data
             return Response(__result)
@@ -135,10 +137,10 @@ class Check(GenericAPIView):
         try:
             payment_id = request.data["payment_id"]
             __response = find_payment(payment_id=payment_id)
-            request.user = QuerySet(User).get(id=__response["metadata"]["user_id"])
+            request.user = User.objects.get(id=__response["metadata"]["user_id"])
             if not request.user.groups.filter(id=3).exists():
                 return Response("", status=403)
-            if QuerySet(Payment).filter(payment=payment_id).exists():
+            if ModelPayment.objects.filter(payment=payment_id).exists():
                 return Response("Платеж не найден", status=404)
             if 'metadata' in __response:
                 del __response["metadata"]

@@ -16,8 +16,9 @@ def check(payment_id: str) -> float:
 
 
 @app.task
-def complete(value: float, payment_id: str, cache_id: str) -> None:
-    reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
-    Main(reg_cache_model.user, payment_id).add_balance(value)
-    reg_cache_model.user.save(update_fields=("balance",))
-    cache.delete(cache_id)
+def complete(value: float, payment_id: str, user_id: int) -> None:
+    user = User.objects.get(id=user_id)
+    _main = Main(user, payment_id)
+    _main.add_balance(value)
+    _main.activate()
+    user.save(update_fields=("ws_status", "start_datetime_pp", "end_datetime_pp"))

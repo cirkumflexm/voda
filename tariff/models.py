@@ -43,17 +43,6 @@ class TariffPlan(models.Model):
         verbose_name_plural = "Тарифы"
 
     def save(self, *args, **kw):
-        if self.price < Decimal('0.0'):
-            raise ValueError("Цена не может быть отрицательной.")
-        if self.unit_measurement not in (
-            "day",
-            "month",
-            "quarter",
-            "halfyear",
-            "year"
-        ):
-            raise ValueError("Неправильно указан временной промежуток. " 
-                             "Требуется: (\"day\", \"month\", \"quarter\", \"halfyear\", \"year\").")
         self.uuid = uuid4()
         super().save(*args, **kw)
 

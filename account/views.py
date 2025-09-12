@@ -7,7 +7,6 @@ from django.db.models import Q, F
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -31,11 +30,6 @@ from config.celery import app
 from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
-
-
-class Pagination(LimitOffsetPagination):
-    max_limit = 150
-    default_limit = 30
 
 
 class PermissionGroup(BasePermission):
@@ -245,7 +239,6 @@ class UserView(viewsets.ModelViewSet):
         .filter(groups__id=3) \
         .order_by('id')
     permission_classes = [IsAuthenticated]
-    pagination_class = Pagination
     lookup_field = "pa"
 
     def __init__(self, **kw) -> None:

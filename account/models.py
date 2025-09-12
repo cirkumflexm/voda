@@ -45,6 +45,10 @@ class User(AbstractUser):
     def __str__(self) -> str:
         return self.username or f"{self.last_name} {self.first_name}"
 
+    def save(self, *args, **kw) -> None:
+        self.username = self.username or self.address.get_pa()
+        super().save(*args, **kw)
+
 
 @dataclass
 class RegistrationCacheModel:
