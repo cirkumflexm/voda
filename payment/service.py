@@ -1,3 +1,5 @@
+import logging
+
 from yookassa import Configuration, Payment
 from yookassa.domain.exceptions import ApiError
 from yookassa.domain.common.user_agent import Version
@@ -78,6 +80,22 @@ def create_payment(
             }
         }
     }
+
+
+def create_auto_payment(
+        *, num: int, price: float, currency: str,
+        payment_method_id: str
+) -> str:
+    payment = Payment.create({
+        "amount": {
+            "value": price,
+            "currency": currency
+        },
+        "capture": True,
+        "payment_method_id": payment_method_id,
+        "description": f"Заказ №{num}"
+    })
+    return payment.id
 
 
 def find_payment(*, payment_id: str) -> PaymentResponse:

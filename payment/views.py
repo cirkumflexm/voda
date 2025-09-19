@@ -71,7 +71,7 @@ class Create(GenericAPIView):
             __result = __response["response_data"]
             # __cache_id = uuid4()
             # cache.set(__cache_id, user)
-            __task = chain(check.s(__result['id']), complete.s(__result['id'], user.id))
+            __task = chain(check.s(__result['id'], user.id), complete.s(__result['id'], user.id))
             __task.apply_async()
             __result["tariff"] = TariffPlanSerializer(user.tariff_plan, context=request).data
             return Response(__result)
@@ -114,7 +114,7 @@ class CreateForTestTariff(GenericAPIView):
         )
         __result = __response["response_data"]
         __task = chain(
-            check.s(__result['id']),
+            check.s(__result['id'], reg_cache_model_id=serialize.data['id']),
             task_create_account.s(serialize.data['id'], __result['id']),
             # complete.s(__result['id'], serialize.data['id'])
         )

@@ -9,6 +9,9 @@ from django.utils import timezone
 
 from account.models import User
 from config.celery import app
+from payment.models import Payment
+from payment.service import create_auto_payment
+from payment.tasks import complete
 from tariff.src.tools import Main, CustomException
 
 
@@ -64,6 +67,16 @@ def task_tariff_activate_loop(self: Task) -> None:
                 logging.info(f"user - {user}")
                 complete_tariff(user)
                 set_next_tariff(user)
+                if user.payment_method and user.balance < user.tariff_plan.price:
+                    __payment_id = Payment.objects.filter(user=user).count()
+                    _id = create_auto_payment(
+                        num=__payment_id + 1,
+                        price=user.tariff_plan.price,
+                        currency="RUB",
+                        payment_method_id=user.payment_method
+                    )
+                    complete.delay(user.tariff_plan.price, _id, user.id)
+                    continue
                 if user.auto_payment:
                     tariff_activate(user)
                 user.save()

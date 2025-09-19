@@ -35,6 +35,7 @@ class User(AbstractUser):
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
     is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
     tariffs = models.ManyToManyField("tariff.TariffPlan", verbose_name="Все тарифы")
+    payment_method = models.CharField(max_length=36, verbose_name="ID автоплатежа", null=True)
 
     definitions: QuerySet[Definition]
 
