@@ -56,9 +56,7 @@ class TariffPlanPermissionGroup(PermissionGroup):
     destroy=extend_schema(exclude=True)
 )
 class TariffPlanView(viewsets.ModelViewSet):
-    queryset = TariffPlan.objects \
-        .annotate(pa=F('tariff_planes__address')) \
-        .order_by('id')
+    queryset = TariffPlan.objects.order_by('id')
     serializer_class = TariffPlanSerializer
     permission_classes = [TariffPlanPermissionGroup, IsAuthenticated]
     pagination_class = Pagination
@@ -76,12 +74,6 @@ class TariffPlanView(viewsets.ModelViewSet):
             Для пользователей:
             чтение
         """
-
-    def get_queryset(self):
-        if self.request and self.request.user.groups.filter(id=3).exists():
-            __tariff_plan = self.request.user.tariff_plan
-            return [self.request.user.tariff_plan] if __tariff_plan else []
-        return super().get_queryset()
 
 
 @extend_schema_view(

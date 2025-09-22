@@ -5,7 +5,7 @@ from account.models import User
 from address.models import Address
 from address.serializers import AddressSerializeChange, AddressSerializeList
 from config.tools import GetPa, Pa
-from tariff.serializers import TariffPlanSerializer, TariffPlanSerializerWithoutPa
+from tariff.serializers import TariffPlanSerializerWithoutPa
 from phonenumber_field.serializerfields import PhoneNumberField
 
 
@@ -74,8 +74,8 @@ class UserSerializeBase(serializers.ModelSerializer, GetPa):
 
 
 class UserSerializerGet(UserSerializeBase):
-    tariff_plan = TariffPlanSerializer(read_only=True)
-    next_tariff_plan = TariffPlanSerializer(read_only=True)
+    tariff_plan = TariffPlanSerializerWithoutPa(read_only=True)
+    next_tariff_plan = TariffPlanSerializerWithoutPa(read_only=True)
 
 
 class UserSerializerPost(UserSerializeBase):
@@ -89,7 +89,6 @@ class UserSerializerPost(UserSerializeBase):
         ]
 
     def update(self, instance: User, validated_data: dict):
-        print(validated_data)
         address = validated_data.pop('address', {})
         instance.address.__dict__.update(address)
         instance.__dict__.update(validated_data)

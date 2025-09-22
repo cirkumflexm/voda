@@ -235,7 +235,6 @@ class Refresh(TokenRefreshView):
 )
 class UserView(viewsets.ModelViewSet):
     queryset = User.objects \
-        .annotate(pa=F('address')) \
         .filter(groups__id=3) \
         .order_by('id')
     permission_classes = [IsAuthenticated]
@@ -257,12 +256,10 @@ class UserView(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if self.request.user.groups.filter(id=3).exists():
-            return (User.objects
-                .select_related("tariff_plan")
-                .select_related("address")
-                .get(id=self.request.user.id)
-            ,)
-        return super().get_queryset()
+            self.queryset = self.queryset \
+                .select_related('address') \
+                .filter(id=self.request.user.id)
+        return self.queryset.annotate(pa=F('address_id'))
 
     def get_serializer_class(self):
         if self.action == 'list':

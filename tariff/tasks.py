@@ -31,8 +31,8 @@ def complete_tariff(user: User) -> None:
     user.ws_status = False
     user.end_datetime_pp = None
     user.start_datetime_pp = None
-    if not user.tariff_plan.is_test:
-        user.tariff_plan.archive = False
+    # if not user.tariff_plan.is_test:
+    #     user.tariff_plan.archive = False
 
 
 @app.task()
@@ -67,20 +67,22 @@ def task_tariff_activate_loop(self: Task) -> None:
                 logging.info(f"user - {user}")
                 complete_tariff(user)
                 set_next_tariff(user)
-                if user.payment_method and user.balance < user.tariff_plan.price:
-                    __payment_id = Payment.objects.filter(user=user).count()
-                    _id = create_auto_payment(
-                        num=__payment_id + 1,
-                        price=user.tariff_plan.price,
-                        currency="RUB",
-                        payment_method_id=user.payment_method
-                    )
-                    complete.delay(user.tariff_plan.price, _id, user.id)
-                    continue
-                if user.auto_payment:
-                    tariff_activate(user)
-                user.save()
-                user.tariff_plan.save()
+                try:
+                    if user.payment_method and user.balance < user.tariff_plan.price:
+                        __payment_id = Payment.objects.filter(user=user).count()
+                        _id = create_auto_payment(
+                            num=__payment_id + 1,
+                            price=user.tariff_plan.price,
+                            currency="RUB",
+                            payment_method_id=user.payment_method
+                        )
+                        complete.delay(user.tariff_plan.price, _id, user.id)
+                        continue
+                    if user.auto_payment:
+                        tariff_activate(user)
+                finally:
+                    user.save()
+                    user.tariff_plan.save()
     finally:
         self.retry(countdown=0)
 
