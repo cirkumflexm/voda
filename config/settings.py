@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82'
+#SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -86,19 +86,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
-
+"""
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
         'NAME': 'project_db',
         'USER': 'project_user',
         'PASSWORD': 'vm89DDF77GDDD4a9B9f0',
-        'HOST': '95.183.8.42',
+        'HOST': 'localhost',
         'PORT': '5432',
         'TIME_ZONE': 'Europe/Moscow'
     }
 }
-
+"""
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -144,6 +144,14 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+try:
+    from .local_settings import *
+except ImportError:
+    pass
+
+
 
 AUTH_USER_MODEL = 'account.User'
 
