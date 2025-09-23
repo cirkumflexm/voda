@@ -10,5 +10,4 @@ class GetPa:
 
     @staticmethod
     def get_pa(model) -> str:
-        return f'{getattr(model, 'pa', ''):0>12}'
-
+        return f'{model.pa:0>12}' if getattr(model, 'pa', False) else ''
