@@ -90,15 +90,12 @@ class LoginAPIView(APIView):
         serialize = Authorization(data=request.data)
         if serialize.is_valid():
             _login = serialize.data['login']
-            password = serialize.data['password']
-            if not (_login and password):
+            if not _login:
                 return Response("Данные введены некорректно.", status=400)
             if _login.isnumeric():
                 user = User.objects.filter(Q(address_id=int(_login)) | Q(phone=_login)).first()
             else:
                 user = User.objects.filter(phone=_login).first()
-            if not (user and check_password(password, user.password)):
-                return Response("Неправильно введен логин или пароль.", status=401)
             is_user = user.groups.filter(id=3).exists()
             result = send_sms_code.delay(user.phone, is_user, user.address_id)
             return Response({
@@ -133,7 +130,7 @@ class LoginOperator(APIView):
     description="""
 /account/registration/ указываем номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
 
-/payment/test-tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
+/payment/tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
 ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
 
 смс придет на тестовый api /account/temp-test/get_sms_list

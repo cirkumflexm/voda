@@ -11,7 +11,6 @@ from phonenumber_field.serializerfields import PhoneNumberField
 
 class Authorization(serializers.Serializer):
     login = serializers.CharField(label="Логин")
-    password = serializers.CharField(label="Пароль")
     target = serializers.CharField(default="code", label="След. операция")
     method = serializers.ChoiceField(default="sms", choices=(
         ('sms', 'код по смс'),
