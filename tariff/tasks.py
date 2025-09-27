@@ -47,8 +47,8 @@ def task_tariff_activate_loop(self: Task) -> None:
             for user in User.objects \
                     .select_for_update(skip_locked=True) \
                     .filter(
-                        end_datetime_pp__lt = timezone.now(),
-                        groups__id = 3
+                        end_datetime_pp__lt=timezone.now(),
+                        groups__id=3
                     ) \
                     .only(
                         'balance',

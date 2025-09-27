@@ -37,7 +37,6 @@ class TariffPlan(models.Model):
     )
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
 
-
     class Meta:
         verbose_name = "Тариф"
         verbose_name_plural = "Тарифы"

@@ -11,7 +11,6 @@ from phonenumber_field.serializerfields import PhoneNumberField
 
 class Authorization(serializers.Serializer):
     login = serializers.CharField(label="Логин")
-    password = serializers.CharField(label="Пароль")
     target = serializers.CharField(default="code", label="След. операция")
     method = serializers.ChoiceField(default="sms", choices=(
         ('sms', 'код по смс'),
@@ -27,10 +26,11 @@ class AuthorizationOperator(Authorization):
     method = None
 
 
-class RegistrationUser(serializers.Serializer):
+class RegistrationUser(Authorization):
     phone = PhoneNumberField(label="Телефон", region='RU')
     apartment = serializers.CharField(label="Квартира")
     pa = Pa.pa
+    login = None
 
 
 class RegistrationUserResponse(serializers.Serializer):
@@ -124,9 +124,16 @@ class TargetResposneSerializer(serializers.Serializer):
     ), label="Метод")
 
 
-class DoubleAuthenticationSerializer(TargetResposneSerializer):
+class RegistrationUserMeta(RegistrationUser):
     target = None
     method = None
+    pa = None
+
+
+class DoubleAuthenticationSerializer(TargetResposneSerializer):
+    method = None
+    target = None
+    meta = RegistrationUserMeta()
     code = serializers.CharField(min_length=6, max_length=6, label="Код")
 
 
