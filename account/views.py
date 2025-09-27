@@ -23,8 +23,10 @@ from re import sub, compile
 from account.models import User, RegistrationCacheModel
 from account.tasks import task_create_account, send_sms_code
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
-    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, UserSerializerPatch, \
-    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator
+    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
+    UserSerializerPatch, \
+    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator, \
+    RegistrationUserMeta
 from address.models import Address
 from config.celery import app
 from tariff.models import TariffPlan
@@ -71,9 +73,65 @@ class DoubleAuthentication(generics.GenericAPIView):
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
             code, pa = task.result
-            if code is None or code == request.data['code']:
+            if code is not None and code == request.data['code']:
                 task.revoke()
                 return release(request, User.objects.get(address_id=pa))
+        return Response("Код введен неверно.", status=403)
+
+
+@extend_schema(
+    summary="Код подтверждения",
+    request=DoubleAuthenticationSerializer,
+    responses={
+        200: RegistrationUserResponse()
+    }
+)
+class DoubleRegistration(generics.GenericAPIView):
+    def post(self, request: Request) -> Response:
+        task = AsyncResult(request.data['id'], app=app)
+        if task.ready():
+            code, pa = task.result
+            if code == request.data['code']:
+                task.revoke()
+                address = Address.objects.get(pa=pa)
+                meta_serializer = RegistrationUserMeta(data=request.data['meta'])
+                assert meta_serializer.is_valid(), meta_serializer.errors
+                user_address = Address(
+                    apartment=meta_serializer.data['apartment'],
+                    house=address.house,
+                    street=address.street,
+                    building=address.building,
+                    fias=address.fias
+                )
+                user_address.pa = user_address.get_pa()
+                user_address.join = user_address.get_join()
+                user = User(
+                    phone = meta_serializer.data['phone'],
+                    first_name = "",
+                    last_name = "",
+                    address = user_address
+                )
+                tariff_plan = TariffPlan.create_test_tariff_plan(user)
+                registration_user_response = RegistrationUserResponse({
+                    'pa': user_address.pa,
+                    'new': Address.objects \
+                        .filter(pa=user_address.pa).exists(),
+                    'tariff_plan': tariff_plan,
+                    'id': uuid4()
+                }).data
+                cache.set(
+                    registration_user_response['id'],
+                    RegistrationCacheModel(
+                        method=registration_user_response['method'],
+                        user=user,
+                        tariff_plan=tariff_plan
+                    ),
+                    timeout=3600*24
+                )
+                return Response(
+                    registration_user_response,
+                    status=200
+                )
         return Response("Код введен неверно.", status=403)
 
 
@@ -128,7 +186,9 @@ class LoginOperator(APIView):
 @extend_schema(
     summary="Регистрация",
     description="""
-/account/registration/ указываем номер квартиры и pa (/address/list/). далее получаем id задачи (не uuid тарифа)
+/account/next/ указываем номер квартиры и pa (/address/list/). отправляем смс 
+
+/accont/registration/submit/ вводим полученный код из смс. далее получаем id задачи (не uuid тарифа)
 
 /payment/tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
 ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
@@ -136,7 +196,7 @@ class LoginOperator(APIView):
 смс придет на тестовый api /account/temp-test/get_sms_list
 """,
     responses={
-        200: RegistrationUserResponse(),
+        200: TargetResposneSerializer(),
         401: OpenApiResponse()
     }
 )
@@ -146,46 +206,16 @@ class RegistrationView(GenericAPIView):
     def post(self, request) -> Response:
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
+        phone = int(serializer.data['phone'].replace('+', ''))
         assert not User.objects \
-            .filter(phone=int(serializer.data['phone'].replace('+', ''))) \
+            .filter(phone=phone) \
             .exists(), "Номер уже зарегистрирован."
-        address = Address.objects.get(pa=int(serializer.data['pa']))
-        user_address = Address(
-            apartment=serializer.data['apartment'],
-            house=address.house,
-            street=address.street,
-            building=address.building,
-            fias=address.fias
-        )
-        user_address.pa = user_address.get_pa()
-        user_address.join = user_address.get_join()
-        user = User(
-            phone = serializer.data['phone'],
-            first_name = "",
-            last_name = "",
-            address = user_address
-        )
-        tariff_plan = TariffPlan.create_test_tariff_plan(user)
-        registration_user_response = RegistrationUserResponse({
-            'pa': user_address.pa,
-            'new': Address.objects \
-                .filter(pa=user_address.pa).exists(),
-            'tariff_plan': tariff_plan,
-            'id': uuid4()
-        }).data
-        cache.set(
-            registration_user_response['id'],
-            RegistrationCacheModel(
-                method=registration_user_response['method'],
-                user=user,
-                tariff_plan=tariff_plan
-            ),
-            timeout=3600*24
-        )
-        return Response(
-            registration_user_response,
-            status=200
-        )
+        result = send_sms_code.delay(str(phone), True, serializer.data['pa'])
+        return Response({
+            "target": serializer.data['target'],
+            "method": serializer.data['method'],
+            "id": result.id,
+        })
 
 
 class LogoutAPIView(APIView):

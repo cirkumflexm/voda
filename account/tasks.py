@@ -4,6 +4,7 @@ from base64 import b64encode
 from os import getenv
 from random import randint
 from secrets import token_bytes
+from typing import Optional
 
 from celery import Task
 from django.contrib.auth.hashers import make_password
@@ -70,7 +71,7 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
 
 
 @app.task()
-def send_sms_code(phone: str, is_user: bool, pa: str) -> tuple[str | None, str]:
+def send_sms_code(phone: str, is_user: bool, pa: Optional[str] = None) -> tuple[str | None, str]:
     if is_user:
         _rand = randint(100100, 900900)
         message = SMS_MESSAGE % f'{_rand:_}'.replace('_', '-')
