@@ -133,8 +133,11 @@ class RegistrationUserMeta(RegistrationUser):
 class DoubleAuthenticationSerializer(TargetResposneSerializer):
     method = None
     target = None
-    meta = RegistrationUserMeta()
     code = serializers.CharField(min_length=6, max_length=6, label="Код")
+
+
+class DoubleRegistrationSerializer(DoubleAuthenticationSerializer):
+    meta = RegistrationUserMeta()
 
 
 # ------------------------------------

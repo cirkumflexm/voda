@@ -26,7 +26,7 @@ from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
     UserSerializerPatch, \
     DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator, \
-    RegistrationUserMeta
+    RegistrationUserMeta, DoubleRegistrationSerializer
 from address.models import Address
 from config.celery import app
 from tariff.models import TariffPlan
@@ -81,7 +81,7 @@ class DoubleAuthentication(generics.GenericAPIView):
 
 @extend_schema(
     summary="Код подтверждения",
-    request=DoubleAuthenticationSerializer,
+    request=DoubleRegistrationSerializer,
     responses={
         200: RegistrationUserResponse()
     }
