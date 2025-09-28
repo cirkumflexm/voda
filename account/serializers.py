@@ -108,11 +108,7 @@ class DataSerializer(serializers.ModelSerializer, GetPa):
     class Meta:
         model = User
         fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
-        read_only_fields = ('ws_status', 'start_datetime_pp', 'end_datetime_pp')
-
-    @staticmethod
-    def get_pa(model: dict) -> str:
-        return f'{model.get('pa', ''):0>12}'
+        read_only_fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
 
 
 class TargetResposneSerializer(serializers.Serializer):

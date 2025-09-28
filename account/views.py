@@ -307,6 +307,20 @@ class DataView(generics.RetrieveAPIView):
     lookup_field = "pa"
 
 
+@extend_schema(summary="Получить данные пользователя")
+class MyUserView(generics.RetrieveAPIView):
+    queryset = User.objects \
+        .annotate(pa=F('address')) \
+        .filter(groups__id=3) \
+        .values('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
+    serializer_class = DataSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs) -> Response:
+        data = self.get_queryset().get(pk=request.user.pk)
+        data['pa'] = f"{data['pa']:0>12}"
+        return Response(data)
+
 
 # --------------------------
 

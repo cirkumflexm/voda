@@ -15,6 +15,7 @@ urlpatterns = [
     path('next/', RegistrationView.as_view(), name="next"),
     path('', include(router_private.urls), name='users'),
     path('info/<slug:pa>', DataView.as_view(), name='info'),
+    path('my/', MyUserView.as_view(), name='my'),
     path('login/submit/', DoubleAuthentication.as_view(), name='login_submit'),
     path('registration/submit/', DoubleRegistration.as_view(), name='registration_submit'),
     path('temp-test/__get_sms_list__', TempGetCodesList.as_view()),
