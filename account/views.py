@@ -26,9 +26,10 @@ from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
     UserSerializerPatch, \
     DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator, \
-    RegistrationUserMeta, DoubleRegistrationSerializer
+    RegistrationUserMeta, DoubleRegistrationSerializer, NextDoneId
 from address.models import Address
 from config.celery import app
+from config.tools import assertion_response
 from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
@@ -62,6 +63,23 @@ def release(request: Request, user: User) -> Response:
 
 
 @extend_schema(
+    summary="Завершения регистрации",
+    request=NextDoneId,
+    responses={
+        200: AuthorizationResponse()
+    }
+)
+class NextDoneView(generics.GenericAPIView):
+    def post(self, request: Request) -> Response:
+        reg_cache_model = cache.get(request.data['id'])
+        assert reg_cache_model, "Не правильный Id"
+        user = User.objects.get(phone=reg_cache_model.user.phone)
+        response = release(request, user)
+        cache.delete(request.data['id'])
+        return response
+
+
+@extend_schema(
     summary="Код подтверждения",
     request=DoubleAuthenticationSerializer,
     responses={
@@ -87,6 +105,8 @@ class DoubleAuthentication(generics.GenericAPIView):
     }
 )
 class DoubleRegistration(generics.GenericAPIView):
+
+    @assertion_response
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
@@ -203,13 +223,20 @@ class LoginOperator(APIView):
 class RegistrationView(GenericAPIView):
     serializer_class = RegistrationUser
 
+    @assertion_response
     def post(self, request) -> Response:
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
         phone = int(serializer.data['phone'].replace('+', ''))
+        address = Address.objects.filter(pa=serializer.data['pa']).first()
+        assert address, "Адрес не существует"
+        address.apartment = serializer.data['apartment']
         assert not User.objects \
             .filter(phone=phone) \
             .exists(), "Номер уже зарегистрирован."
+        assert not User.objects \
+            .filter(address_id=address.get_pa()) \
+            .exists(), "Адрес уже зарегистрирован."
         result = send_sms_code.delay(str(phone), True, serializer.data['pa'])
         return Response({
             "target": serializer.data['target'],

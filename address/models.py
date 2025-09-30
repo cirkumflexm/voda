@@ -19,10 +19,10 @@ class Address(models.Model):
         return self.get_join()
 
     def get_pa(self) -> str:
-        return self.pa or f'{sum(map(ord, str(self))):0>12}'
+        return f'{sum(map(ord, str(self))):0>12}'
         
     def get_join(self) -> str:
-        return self.join or ', '.join(filter(bool, (
+        return ', '.join(filter(bool, (
             f'ул. {self.street}',
             f'д. {self.house}' if self.house else None,
             f'корп. {self.building}' if self.building else None,

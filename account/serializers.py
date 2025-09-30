@@ -2,7 +2,6 @@
 from rest_framework import serializers
 
 from account.models import User
-from address.models import Address
 from address.serializers import AddressSerializeChange, AddressSerializeList
 from config.tools import GetPa, Pa
 from tariff.serializers import TariffPlanSerializerWithoutPa
@@ -46,6 +45,10 @@ class RegistrationUserResponse(serializers.Serializer):
 class AuthorizationResponse(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
+
+
+class NextDoneId(serializers.Serializer):
+    id = serializers.UUIDField(label="Id")
 
 
 class Logout(serializers.Serializer):

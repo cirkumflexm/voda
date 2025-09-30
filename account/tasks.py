@@ -44,8 +44,6 @@ api = SmsAero(
 
 create_account: Task
 
-redis = Redis(db=1)
-
 @app.task
 def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> None:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
@@ -62,13 +60,9 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
         _main.activate()
         reg_cache_model.user.save()
         reg_cache_model.user.tariff_plan.save()
-    message = MESSAGE % (reg_cache_model.user.first_name, password)
-    # redis.lpush("sms_list", f"Sms for {reg_cache_model.user.address.pa}\n{message}")
-    # redis.ltrim("sms_list", 0, 9)
-    LOGGER.info(MESSAGE % (reg_cache_model.user.first_name, "*" * 9))
-    # api.send_sms(int(user.phone.replace('+', '')), message)
-    cache.delete(cache_id)
 
+
+redis = Redis(db=1)
 
 @app.task()
 def send_sms_code(phone: str, is_user: bool, pa: Optional[str] = None) -> tuple[str | None, str]:

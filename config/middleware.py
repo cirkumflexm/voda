@@ -14,5 +14,6 @@ class WrapResponseMiddleware:
             return response
         return JsonResponse({
             'status': 'success' if response.reason_phrase == "OK" else "error",
-            'data': response.data if hasattr(response, "data") else None
+            'data': getattr(response, "data", None)
         }, status=response.status_code)
+

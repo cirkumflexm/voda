@@ -1,6 +1,7 @@
 from uuid import uuid4
 
 from celery import chain
+from django.contrib.auth import login
 from django.core.cache import cache
 from django.http import HttpResponse
 from rest_framework.request import Request
@@ -11,6 +12,7 @@ from rest_framework.generics import GenericAPIView
 
 from account.tasks import task_create_account
 from account.models import User, RegistrationCacheModel
+from config.tools import assertion_response
 from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse, CreateByIdParamsSerializer
 from tariff.serializers import TariffPlanSerializer
 from .models import Payment as ModelPayment
@@ -91,6 +93,7 @@ class Create(GenericAPIView):
 )
 class CreateForTestTariff(GenericAPIView):
 
+    @assertion_response
     def get(self, request: Request) -> Response:
         serialize = CreateByIdParamsSerializer(data={
             "id": request.GET['id'],
@@ -115,8 +118,7 @@ class CreateForTestTariff(GenericAPIView):
         __result = __response["response_data"]
         __task = chain(
             check.s(__result['id'], reg_cache_model_id=serialize.data['id']),
-            task_create_account.s(serialize.data['id'], __result['id']),
-            # complete.s(__result['id'], serialize.data['id'])
+            task_create_account.s(serialize.data['id'], __result['id'])
         )
         __task.apply_async()
         __result["tariff"] = TariffPlanSerializer(reg_cache_model.user.tariff_plan).data

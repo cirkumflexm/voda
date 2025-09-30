@@ -10,6 +10,7 @@ from rest_framework.response import Response
 from rest_framework.generics import GenericAPIView
 
 from account.models import User
+from config.tools import assertion_response
 from payment.views import Create
 from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
 from .models import TariffPlan
@@ -109,6 +110,7 @@ class Activate(GenericAPIView):
 class ActivationTestTariff(GenericAPIView):
     serializer_class = ActivationTestTariffSerializer
 
+    @assertion_response
     @extend_schema(summary="Активация тестового тарифа")
     def post(self, request: Request) -> Response | JsonResponse:
         try:
