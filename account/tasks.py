@@ -16,6 +16,7 @@ from smsaero import SmsAero
 
 from account.models import RegistrationCacheModel
 from config.celery import app
+from tariff.models import TariffPlan
 from tariff.src.tools import Main
 
 load_dotenv()
@@ -50,16 +51,16 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
     password = b64encode(token_bytes(9)).decode()
     with transaction.atomic():
         reg_cache_model.user.password = make_password(password)
-        reg_cache_model.user.tariff_plan.save()
+        reg_cache_model.user.tariff_plan_id = 2
+        reg_cache_model.user.next_tariff_plan_id = 1
         reg_cache_model.user.save()
-        reg_cache_model.user.groups.add(3)
         reg_cache_model.user.address.save()
-        reg_cache_model.user.tariffs.add(reg_cache_model.user.tariff_plan)
+        reg_cache_model.user.groups.add(3)
+        reg_cache_model.user.tariffs.add(1)
+        reg_cache_model.user.tariffs.add(2)
         _main = Main(reg_cache_model.user, payment_id)
         _main.add_balance(payment_value)
         _main.activate()
-        reg_cache_model.user.save()
-        reg_cache_model.user.tariff_plan.save()
 
 
 redis = Redis(db=1)

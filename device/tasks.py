@@ -11,7 +11,7 @@ from device.common import CLIENT
 from device.models import Definition
 
 
-@app.task(bind=True)
+@app.task(bind=True, ignore_result=True, max_retries=None)
 def set_ws_s_task(self: Task) -> None:
     try:
         definitions = Definition.objects \
