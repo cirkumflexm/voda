@@ -8,9 +8,9 @@ from device.models import Device, Definition
 
 LOGGER = logging.getLogger("mqtt.common")
 
-
 CLIENT = mqtt.Client()
-CLIENT.username_pw_set("u_XXKWLD", "HpaltpYw")
+CLIENT.username_pw_set("device", "edR6hqa+fWWy")
+CLIENT.connect(host="95.183.8.42", port=1883)
 
 
 def set_ws_status(user: User, switch: bool) -> None:

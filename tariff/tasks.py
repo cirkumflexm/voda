@@ -84,9 +84,9 @@ def task_tariff_activate_loop(self: Task) -> None:
                     user.save()
                     user.tariff_plan.save()
     finally:
-        self.retry(countdown=0)
+        self.retry(countdown=1)
 
 
 @worker_ready.connect
 def startup(*args, **kw) -> None:
-    group(task_tariff_activate_loop.s() for _ in range(1)).apply_async()
+    task_tariff_activate_loop.delay()
