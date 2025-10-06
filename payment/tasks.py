@@ -30,4 +30,4 @@ def complete(value: float, payment_id: str, user_id: int) -> None:
     _main = Main(user, payment_id)
     _main.add_balance(value)
     _main.activate()
-    user.save(update_fields=("ws_status", "start_datetime_pp", "end_datetime_pp"))
+    user.save(update_fields=("ws_status", "start_datetime_pp", "end_datetime_pp", "balance"))

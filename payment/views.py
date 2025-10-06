@@ -48,7 +48,7 @@ class Create(GenericAPIView):
         }
     )
     def post(self, request) -> Response:
-        request.user = User.objects.filter(personal_account=request.data["pa"]).first()
+        request.user = User.objects.filter(address_id=request.data["pa"]).first()
         if not request.user:
             return Response("Пользователь не найден.", status=400)
         if not request.user.groups.filter(id=3).exists():

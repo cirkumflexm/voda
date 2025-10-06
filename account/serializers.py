@@ -110,8 +110,8 @@ class DataSerializer(serializers.ModelSerializer, GetPa):
 
     class Meta:
         model = User
-        fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
-        read_only_fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
+        fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new')
+        read_only_fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new')
 
 
 class TargetResposneSerializer(serializers.Serializer):

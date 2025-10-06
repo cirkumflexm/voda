@@ -70,10 +70,13 @@ def release(request: Request, user: User) -> Response:
     }
 )
 class NextDoneView(generics.GenericAPIView):
+
+    @assertion_response
     def post(self, request: Request) -> Response:
         reg_cache_model = cache.get(request.data['id'])
         assert reg_cache_model, "Не правильный Id"
-        user = User.objects.get(phone=reg_cache_model.user.phone)
+        user = User.objects.filter(phone=reg_cache_model.user.phone).first()
+        assert user, "Регистрация не завершена"
         response = release(request, user)
         cache.delete(request.data['id'])
         return response
@@ -227,17 +230,17 @@ class RegistrationView(GenericAPIView):
     def post(self, request) -> Response:
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
-        phone = int(serializer.data['phone'].replace('+', ''))
         address = Address.objects.filter(pa=serializer.data['pa']).first()
         assert address, "Адрес не существует"
         address.apartment = serializer.data['apartment']
         assert not User.objects \
-            .filter(phone=phone) \
+            .filter(phone=serializer.data['phone']) \
             .exists(), "Номер уже зарегистрирован."
         assert not User.objects \
             .filter(address_id=address.get_pa()) \
             .exists(), "Адрес уже зарегистрирован."
-        result = send_sms_code.delay(str(phone), True, serializer.data['pa'])
+        phone = serializer.data['phone'].replace('+', '')
+        result = send_sms_code.delay(phone, True, serializer.data['pa'])
         return Response({
             "target": serializer.data['target'],
             "method": serializer.data['method'],
@@ -339,7 +342,7 @@ class MyUserView(generics.RetrieveAPIView):
     queryset = User.objects \
         .annotate(pa=F('address')) \
         .filter(groups__id=3) \
-        .values('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp')
+        .values('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new')
     serializer_class = DataSerializer
     permission_classes = [IsAuthenticated]
 

@@ -97,6 +97,8 @@ class VerificationOfTariff(VerificationOfFunds):
             if self.user.tariff_plan is None or self.user.tariff_plan.archive:
                 raise TARIFF_IS_NULL
             # self.user.tariff_plan.archive = True
+            if self.user.ws_status:
+                return
             super().activate()
             if self.user.is_new:
                 self.user.is_new = False
@@ -112,9 +114,7 @@ class Main(VerificationOfTariff):
         User.balance
         User.tariff_plan
         User.tariff_plan.archive
-        User.tariff_plan.price
         User.ws_status
-        User.tariff_plan.unit_measurement
         User.balance
         User.start_datetime_pp
         User.end_datetime_pp
@@ -122,5 +122,5 @@ class Main(VerificationOfTariff):
         User.is_new
         User.next_tariff_plan
 
-        User, Tariff
+        User
     """

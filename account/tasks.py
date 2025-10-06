@@ -61,6 +61,7 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
         _main = Main(reg_cache_model.user, payment_id)
         _main.add_balance(payment_value)
         _main.activate()
+        reg_cache_model.user.save()
 
 
 redis = Redis(db=1)
