@@ -167,18 +167,17 @@ class LoginAPIView(APIView):
             200: TargetResposneSerializer()
         }
     )
+    @assertion_response
     def post(self, request):
         serialize = Authorization(data=request.data)
         if serialize.is_valid():
             _login = serialize.data['login']
-            if not _login:
-                return Response("Данные введены некорректно.", status=400)
-            if _login.isnumeric():
-                user = User.objects.filter(Q(address_id=int(_login)) | Q(phone=_login)).first()
-            else:
-                user = User.objects.filter(phone=_login).first()
-            is_user = user.groups.filter(id=3).exists()
-            result = send_sms_code.delay(user.phone, is_user, user.address_id)
+            assert _login, "Данные введены некорректно."
+            user = User.objects.filter(
+                Q(address_id=int(_login)) | Q(phone=_login.replace('+', ''))
+            ).first()
+            assert user, "Пользователь не найден"
+            result = send_sms_code.delay(user.phone, True, user.address_id)
             return Response({
                 "target": serialize.data['target'],
                 "method": serialize.data['method'],
@@ -201,8 +200,8 @@ class LoginOperator(APIView):
         _login = request.data['login']
         password = request.data['password']
         user = User.objects.filter(username=_login).first()
-        if not (user and check_password(password, user.password)):
-            return Response("Неправильно введен логин или пароль.", status=401)
+        assert user and check_password(password, user.password), \
+            "Неправильно введен логин или пароль."
         return release(request, user)
 
 
@@ -213,7 +212,7 @@ class LoginOperator(APIView):
 
 /accont/registration/submit/ вводим полученный код из смс. далее получаем id задачи (не uuid тарифа)
 
-/payment/tariff/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
+/payment/action/ вводим id и метод - payment. получаем confirmation_token; или id для тестов.
 ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
 
 смс придет на тестовый api /account/temp-test/get_sms_list

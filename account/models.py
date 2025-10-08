@@ -1,3 +1,4 @@
+from typing import Self
 
 from django.contrib.auth.models import AbstractUser
 from dataclasses import dataclass
@@ -48,6 +49,7 @@ class User(AbstractUser):
 
     def save(self, *args, **kw) -> None:
         self.username = self.username or self.address.get_pa()
+        self.phone = ''.join(filter(str.isnumeric.__call__, self.phone))
         super().save(*args, **kw)
 
 

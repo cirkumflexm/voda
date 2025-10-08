@@ -21,6 +21,7 @@ class Authorization(serializers.Serializer):
 
 
 class AuthorizationOperator(Authorization):
+    password = serializers.CharField(label="Пароль")
     target = None
     method = None
 
