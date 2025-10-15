@@ -116,7 +116,7 @@ class ActivationTestTariff(GenericAPIView):
         try:
             serializer = ActivationTestTariffSerializer(data=request.data)
             assert serializer.is_valid(), str(serializer.error_messages)
-            user = User.objects.get(address_id=serializer.data['pa'])
+            user = User.objects.get(personal_account=serializer.data['pa'])
             assert user.is_new, "Пользователь не является новым"
             test_tariff = user.tariff_choices.get(is_test=True, archive=False)
             user.tariff_plan = test_tariff

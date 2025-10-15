@@ -36,8 +36,8 @@ def create_payment(
             "receipt": {
                 "customer": {
                     "full_name": full_name,
-                    "phone": user_phone,
-                    **({"email": user_email} if user_email else {})
+                    "phone": user_phone.replace('+', ''),
+                    # **({"email": user_email} if user_email else {})
                 },
                 "items": [
                     {

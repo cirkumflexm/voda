@@ -75,7 +75,7 @@ class NextDoneView(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         reg_cache_model = cache.get(request.data['id'])
         assert reg_cache_model, "Не правильный Id"
-        user = User.objects.filter(phone=reg_cache_model.user.phone).first()
+        user = User.objects.filter(phone=reg_cache_model.user.phone.replace('+', '')).first()
         assert user, "Регистрация не завершена"
         response = release(request, user)
         cache.delete(request.data['id'])
@@ -233,7 +233,7 @@ class RegistrationView(GenericAPIView):
         assert address, "Адрес не существует"
         address.apartment = serializer.data['apartment']
         assert not User.objects \
-            .filter(phone=serializer.data['phone']) \
+            .filter(phone=serializer.data['phone'].replace('+', '')) \
             .exists(), "Номер уже зарегистрирован."
         assert not User.objects \
             .filter(address_id=address.get_pa()) \

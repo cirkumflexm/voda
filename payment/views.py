@@ -1,3 +1,5 @@
+import logging
+
 from uuid import uuid4
 
 from celery import chain
@@ -78,6 +80,7 @@ class Create(GenericAPIView):
             __result["tariff"] = TariffPlanSerializer(user.tariff_plan, context=request).data
             return Response(__result)
         except ApiError as ex:
+            logging.warning(ex)
             return Response(
                 ex.content["code"],
                 status=ex.HTTP_CODE

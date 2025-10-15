@@ -49,7 +49,8 @@ class User(AbstractUser):
 
     def save(self, *args, **kw) -> None:
         self.username = self.username or self.address.get_pa()
-        self.phone = ''.join(filter(str.isnumeric.__call__, self.phone))
+        if self.phone:
+            self.phone = ''.join(filter(str.isnumeric.__call__, self.phone))
         super().save(*args, **kw)
 
 

@@ -22,7 +22,7 @@ def set_ws_s_task(self: Task) -> None:
             .values('device_id', 'device__name') \
             .annotate(numbers=ArrayAgg('number'))
         for definition in definitions:
-            mask = reduce(int.__or__.__call__, (0b11 << (_ - 1) * 2 for _ in definition['numbers']))
+            mask = reduce(int.__or__.__call__, (0b1 << (_ - 1) * 2 for _ in definition['numbers']))
             event = f"MX210/{definition['device__name']}/SET/DO/MASK"
             CLIENT.publish(event, mask)
             logging.info("%s %s", event, mask)
