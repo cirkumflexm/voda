@@ -6,28 +6,19 @@ from config.tools import Pa
 from tariff.serializers import TariffPlanSerializer
 
 
-class CheckRequest(serializers.Serializer):
-    payment_id = serializers.CharField()
-
-    class Meta:
-        fields = ["payment_id"]
-
-
 class ResponseData(serializers.Serializer):
     status = serializers.CharField()
 
 
-class CheckResponse(serializers.Serializer):
-    response_data = ResponseData()
-
-    class Meta:
-        fields = ["response_data"]
+class OnAutoPaymentSerializer(serializers.Serializer):
+    status = serializers.CharField(
+        default='Успешно!',
+        read_only=True
+    )
 
 
 class CreateRequest(serializers.Serializer):
     pa = serializers.CharField()
-    class Meta:
-        fields = ["pa"]
 
 
 class Amount(serializers.Serializer):

@@ -1,9 +1,6 @@
 import logging
 
-from uuid import uuid4
-
 from celery import chain
-from django.contrib.auth import login
 from django.core.cache import cache
 from django.http import HttpResponse
 from rest_framework.request import Request
@@ -15,7 +12,7 @@ from rest_framework.generics import GenericAPIView
 from account.tasks import task_create_account
 from account.models import User, RegistrationCacheModel
 from config.tools import assertion_response
-from payment.serializers import CheckRequest, CreateRequest, CreateResponse, CheckResponse, CreateByIdParamsSerializer
+from payment.serializers import CreateRequest, CreateResponse, OnAutoPaymentSerializer, CreateByIdParamsSerializer
 from tariff.serializers import TariffPlanSerializer
 from .models import Payment as ModelPayment
 from .service import Payment, ApiError, create_payment, find_payment
@@ -130,28 +127,18 @@ class CreateForTestTariff(GenericAPIView):
 
 
 @extend_schema(
-    summary="Проверить статус оплаты",
+    summary="Отключить автооплату",
     responses={
-        200: CheckResponse()
+        200: OnAutoPaymentSerializer()
     }
 )
-class Check(GenericAPIView):
-    serializer_class = CheckRequest
+class OnAutoPayment(GenericAPIView):
+    pagination_class = [IsAuthenticated]
 
-    def post(self, request) -> HttpResponse:
-        try:
-            payment_id = request.data["payment_id"]
-            __response = find_payment(payment_id=payment_id)
-            request.user = User.objects.get(id=__response["metadata"]["user_id"])
-            if not request.user.groups.filter(id=3).exists():
-                return Response("", status=403)
-            if ModelPayment.objects.filter(payment=payment_id).exists():
-                return Response("Платеж не найден", status=404)
-            if 'metadata' in __response:
-                del __response["metadata"]
-            return Response(__response)
-        except ApiError as ex:
-            return Response(
-                ex.content["code"],
-                status=ex.HTTP_CODE
-            )
+    def get(self, request: Request) -> Response:
+        User.objects \
+            .filter(pk=request.user.pk)\
+            .update(payment_method=None)
+        response_serializer = OnAutoPaymentSerializer(data={})
+        response_serializer.is_valid()
+        return Response(data=response_serializer.data)
