@@ -35,19 +35,6 @@ from tariff.models import TariffPlan
 PHONE_COMPILE = compile(r'\D')
 
 
-class PermissionGroup(BasePermission):
-    def has_permission(self, request, view) -> bool | None:
-        return request.user.groups.filter(id__in=(1, 2)).exists()
-
-
-class UserPermissionGroup(PermissionGroup):
-    def has_object_permission(self, request, view, obj) -> bool:
-        if request.method != "GET" and not request.user.is_superuser:
-            if obj.groups.filter(id__in=(1, 2)).exists():
-                raise PermissionDenied()
-        return True
-
-
 def release(request: Request, user: User) -> Response:
     request: HttpRequest
     login(request, user)
@@ -116,29 +103,21 @@ class DoubleRegistration(generics.GenericAPIView):
             code, pa = task.result
             if code == request.data['code']:
                 task.revoke()
-                address = Address.objects.get(pa=pa)
+                address = Address.objects.filter(pk=pa).first()
+                assert address, "К сожалению адрес не подключен к системе."
                 meta_serializer = RegistrationUserMeta(data=request.data['meta'])
                 assert meta_serializer.is_valid(), meta_serializer.errors
-                user_address = Address(
-                    apartment=meta_serializer.data['apartment'],
-                    house=address.house,
-                    street=address.street,
-                    building=address.building,
-                    fias=address.fias
-                )
-                user_address.pa = user_address.get_pa()
-                user_address.join = user_address.get_join()
                 user = User(
                     phone = meta_serializer.data['phone'],
                     first_name = "",
                     last_name = "",
-                    address = user_address
+                    address = address
                 )
                 tariff_plan = TariffPlan.create_test_tariff_plan(user)
                 registration_user_response = RegistrationUserResponse({
-                    'pa': user_address.pa,
+                    'pa': address.pa,
                     'new': Address.objects \
-                        .filter(pa=user_address.pa).exists(),
+                        .filter(pa=address.pa).exists(),
                     'tariff_plan': tariff_plan,
                     'id': uuid4()
                 }).data
@@ -230,14 +209,14 @@ class RegistrationView(GenericAPIView):
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
         address = Address.objects.filter(pa=serializer.data['pa']).first()
-        assert address, "Адрес не существует"
+        assert address, "К сожалению адрес не подключен к системе."
         address.apartment = serializer.data['apartment']
+        address = Address.objects.filter(pa=address.get_pa()).first()
+        assert address, "К сожалению адрес не подключен к системе."
         assert not User.objects \
             .filter(phone=serializer.data['phone'].replace('+', '')) \
             .exists(), "Номер уже зарегистрирован."
-        assert not User.objects \
-            .filter(address_id=address.get_pa()) \
-            .exists(), "Адрес уже зарегистрирован."
+
         phone = serializer.data['phone'].replace('+', '')
         result = send_sms_code.delay(phone, True, serializer.data['pa'])
         return Response({

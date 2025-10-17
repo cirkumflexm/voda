@@ -1,4 +1,4 @@
-from typing import Self
+from copy import copy
 
 from rest_framework import permissions
 from rest_framework.request import Request
@@ -16,12 +16,13 @@ class HighLevelLpansOrRead(OnlyOperatorOrAdmin):
 
 
 class PermissionGroup(permissions.BasePermission):
-    id__in = None
+    _id__in = None
 
     def has_permission(self, request, view) -> bool:
-        return request.user.groups.filter(id__in=self.id__in).exists()
+        return request.user.groups.filter(id__in=self._id__in).exists()
 
 
 def get_permission_group(*ids: int) -> type[PermissionGroup]:
-    PermissionGroup.id__in = ids
-    return PermissionGroup
+    permission_class = copy(PermissionGroup)
+    permission_class._id__in = ids
+    return permission_class

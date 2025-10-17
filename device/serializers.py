@@ -31,20 +31,22 @@ class UserGroupDefinitionSerializer(UserSerializerGet, Pa):
 
 
 class DefinitionSerializerGet(serializers.ModelSerializer):
-    user = UserSerializerGet(read_only=True)
     device = DeviceSerializer(read_only=True)
 
     class Meta:
         model = Definition
-        fields = ['id', 'device', 'number', 'user']
-        read_only_fields = ['id', 'device', 'number', 'user']
+        fields = ['id', 'device', 'number']
+        read_only_fields = ['id', 'device', 'number']
 
 
 class DefinitionSerializerSet(serializers.ModelSerializer):
+    pa = Pa.pa
+    apartment = serializers.CharField(label="Квартира", default="1")
+
     class Meta:
         model = Definition
-        fields = ['id', 'device', 'number', 'user']
-        read_only_fields = ['id']
+        fields = ['id', 'device', 'number', 'pa', 'apartment']
+        read_only_fields = ['id', 'apartment']
 
 
 class SwitchSerializer(serializers.Serializer):

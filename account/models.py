@@ -16,7 +16,10 @@ from tariff.models import TariffPlan
 
 
 class User(AbstractUser):
-    address = models.OneToOneField("address.Address", verbose_name="Адрес", null=True, on_delete=models.CASCADE)
+    address = models.OneToOneField(
+        "address.Address", verbose_name="Адрес",
+        null=True, on_delete=models.PROTECT
+    )
     balance = models.DecimalField(
         verbose_name="Баланс", max_digits=15, decimal_places=2,
         default=0., validators=[MinValueValidator(0)]
@@ -37,8 +40,6 @@ class User(AbstractUser):
     is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
     tariffs = models.ManyToManyField("tariff.TariffPlan", verbose_name="Все тарифы", related_name="users")
     payment_method = models.CharField(max_length=36, verbose_name="ID автоплатежа", null=True, blank=True)
-
-    definitions: QuerySet[Definition]
 
     class Meta:
         verbose_name = "Пользователь"

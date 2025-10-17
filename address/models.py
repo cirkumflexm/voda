@@ -11,6 +11,7 @@ class Address(models.Model):
     apartment = models.CharField(verbose_name="Квартира", max_length=6, blank=True)
     fias = models.UUIDField(verbose_name="ФИАС", null=True)
     join = models.TextField(verbose_name="Адрес", max_length=255)
+    city = models.CharField(verbose_name="Город", max_length=255)
 
     class Meta:
         indexes = [BTreeIndex(fields=['join'])]
@@ -23,6 +24,7 @@ class Address(models.Model):
         
     def get_join(self) -> str:
         return ', '.join(filter(bool, (
+            f'г. {self.city}',
             f'ул. {self.street}',
             f'д. {self.house}' if self.house else None,
             f'корп. {self.building}' if self.building else None,

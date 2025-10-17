@@ -54,7 +54,6 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
         reg_cache_model.user.tariff_plan_id = 2
         reg_cache_model.user.next_tariff_plan_id = 1
         reg_cache_model.user.save()
-        reg_cache_model.user.address.save()
         reg_cache_model.user.groups.add(3)
         reg_cache_model.user.tariffs.add(1)
         reg_cache_model.user.tariffs.add(2)

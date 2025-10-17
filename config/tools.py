@@ -8,7 +8,7 @@ from rest_framework.response import Response
 
 
 class Pa:
-    pa = serializers.CharField(label="Лицевой счет")
+    pa = serializers.CharField(label="Лицевой счет", default=f"{1:0>12}")
 
 
 class GetPa:
