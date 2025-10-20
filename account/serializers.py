@@ -1,3 +1,4 @@
+from copy import copy
 
 from rest_framework import serializers
 
@@ -8,16 +9,35 @@ from tariff.serializers import TariffPlanSerializerWithoutPa
 from phonenumber_field.serializerfields import PhoneNumberField
 
 
+class TargetCodeChoices:
+    DEFAULT_AUTHCODE = "authcode"
+    DEFAULT_REGCODE = "regcode"
+    CHOICES = (
+        (DEFAULT_AUTHCODE, "Код авторизации"),
+        (DEFAULT_REGCODE, "Код регистрации")
+    )
+    LABEL = "След. операция"
+
+
+class MethodCodeChoices:
+    METHOD = serializers.ChoiceField(
+        default="sms",
+        choices=(
+            ('sms', 'код по смс'),
+            ('email', 'код по email')
+        ),
+        label="Метод"
+    )
+
+
 class Authorization(serializers.Serializer):
     login = serializers.CharField(label="Логин")
-    target = serializers.CharField(default="code", label="След. операция")
-    method = serializers.ChoiceField(default="sms", choices=(
-        ('sms', 'код по смс'),
-        ('email', 'код по email')
-    ), label="Метод")
-    
-    class Meta:
-        fields = ["__all__"]
+    target = serializers.ChoiceField(
+        default=TargetCodeChoices.DEFAULT_AUTHCODE,
+        choices=TargetCodeChoices.CHOICES,
+        label=TargetCodeChoices.LABEL,
+    )
+    method = MethodCodeChoices.METHOD
 
 
 class AuthorizationOperator(Authorization):
@@ -26,11 +46,22 @@ class AuthorizationOperator(Authorization):
     method = None
 
 
-class RegistrationUser(Authorization):
+class RegistrationUser(serializers.Serializer):
     phone = PhoneNumberField(label="Телефон", region='RU')
     apartment = serializers.CharField(label="Квартира")
     pa = Pa.pa
-    login = None
+    target = serializers.ChoiceField(
+        default=TargetCodeChoices.DEFAULT_REGCODE,
+        choices=TargetCodeChoices.CHOICES,
+        label=TargetCodeChoices.LABEL,
+    )
+    method = MethodCodeChoices.METHOD
+
+
+class ToDoubleNext(RegistrationUser):
+    id = serializers.UUIDField(label="Id задачи")
+    phone = None
+    apartment = None
 
 
 class RegistrationUserResponse(serializers.Serializer):
@@ -115,22 +146,13 @@ class DataSerializer(serializers.ModelSerializer, GetPa):
         read_only_fields = ('pa', 'ws_status', 'start_datetime_pp', 'end_datetime_pp', 'is_new')
 
 
-class TargetResposneSerializer(serializers.Serializer):
-    id = serializers.UUIDField(label="Id задачи")
-    target = serializers.CharField(default="code", label="Действие")
-    method = serializers.ChoiceField(default="sms", choices=(
-        ('sms', 'код по смс'),
-        ('email', 'код по email')
-    ), label="Метод")
-
-
 class RegistrationUserMeta(RegistrationUser):
     target = None
     method = None
     pa = None
 
 
-class DoubleAuthenticationSerializer(TargetResposneSerializer):
+class DoubleAuthenticationSerializer(ToDoubleNext):
     method = None
     target = None
     code = serializers.CharField(min_length=6, max_length=6, label="Код")

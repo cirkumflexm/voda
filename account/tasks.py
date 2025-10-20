@@ -66,13 +66,13 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
 redis = Redis(db=1)
 
 @app.task()
-def send_sms_code(phone: str, is_user: bool, pa: Optional[str] = None) -> tuple[str | None, str]:
+def send_sms_code(phone: str, is_user: bool, target: str, pa: Optional[str] = None) -> tuple[str | None, str, str]:
     if is_user:
         _rand = randint(100100, 900900)
         message = SMS_MESSAGE % f'{_rand:_}'.replace('_', '-')
         redis.lpush("sms_list", f"Sms to {phone}\n{message}")
         redis.ltrim("sms_list", 0, 9)
         # api.send_sms(user.phone, message)
-        return str(_rand), pa
-    return None, pa
+        return str(_rand), pa, target
+    return None, pa, target
 

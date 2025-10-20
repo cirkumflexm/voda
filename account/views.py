@@ -6,7 +6,6 @@ from django.core.cache import cache
 from django.db.models import Q, F
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -25,7 +24,7 @@ from account.tasks import task_create_account, send_sms_code
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
     UserSerializerPatch, \
-    DoubleAuthenticationSerializer, TargetResposneSerializer, FastAuthUserSerializer, AuthorizationOperator, \
+    DoubleAuthenticationSerializer, ToDoubleNext, FastAuthUserSerializer, AuthorizationOperator, \
     RegistrationUserMeta, DoubleRegistrationSerializer, NextDoneId
 from address.models import Address
 from config.celery import app
@@ -80,8 +79,8 @@ class DoubleAuthentication(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
-            code, pa = task.result
-            if code is not None and code == request.data['code']:
+            code, pa, target = task.result
+            if code is not None and code == request.data['code'] and target == 'authcode':
                 task.revoke()
                 return release(request, User.objects.get(address_id=pa))
         return Response("Код введен неверно.", status=403)
@@ -100,8 +99,8 @@ class DoubleRegistration(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
-            code, pa = task.result
-            if code == request.data['code']:
+            code, pa, target = task.result
+            if code == request.data['code'] and target == 'regcode':
                 task.revoke()
                 address = Address.objects.filter(pk=pa).first()
                 assert address, "К сожалению адрес не подключен к системе."
@@ -143,27 +142,25 @@ class LoginAPIView(APIView):
         summary="Авторизация",
         request=Authorization,
         responses={
-            200: TargetResposneSerializer()
+            200: ToDoubleNext()
         }
     )
     @assertion_response
     def post(self, request):
         serialize = Authorization(data=request.data)
-        if serialize.is_valid():
-            _login = serialize.data['login']
-            assert _login, "Данные введены некорректно."
-            user = User.objects.filter(
-                Q(address_id=int(_login)) | Q(phone=_login.replace('+', ''))
-            ).first()
-            assert user, "Пользователь не найден"
-            result = send_sms_code.delay(user.phone, True, user.address_id)
-            return Response({
-                "target": serialize.data['target'],
-                "method": serialize.data['method'],
-                "id": result.id,
-            })
-        else:
-            return Response(serialize.error_messages, status=400)
+        assert serialize.is_valid(), serialize.errors
+        _login = serialize.data['login']
+        assert _login, "Данные введены некорректно."
+        user = User.objects.filter(
+            Q(address_id=int(_login)) | Q(phone=_login.replace('+', ''))
+        ).first()
+        assert user, "Пользователь не найден"
+        result = send_sms_code.delay(user.phone, True, "authcode", user.address_id)
+        return Response({
+            "target": "authcode",
+            "method": serialize.data['method'],
+            "id": result.id,
+        })
 
 
 class LoginOperator(APIView):
@@ -195,16 +192,13 @@ class LoginOperator(APIView):
 ссылка для оплаты: https://yoomoney.ru/payments/checkout/confirmation?orderId={id}
 
 смс придет на тестовый api /account/temp-test/get_sms_list
-""",
-    responses={
-        200: TargetResposneSerializer(),
-        401: OpenApiResponse()
-    }
+"""
 )
 class RegistrationView(GenericAPIView):
     serializer_class = RegistrationUser
 
     @assertion_response
+    @extend_schema(responses={200: ToDoubleNext()})
     def post(self, request) -> Response:
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
@@ -213,17 +207,27 @@ class RegistrationView(GenericAPIView):
         address.apartment = serializer.data['apartment']
         address = Address.objects.filter(pa=address.get_pa()).first()
         assert address, "К сожалению адрес не подключен к системе."
-        assert not User.objects \
-            .filter(phone=serializer.data['phone'].replace('+', '')) \
-            .exists(), "Номер уже зарегистрирован."
-
         phone = serializer.data['phone'].replace('+', '')
-        result = send_sms_code.delay(phone, True, serializer.data['pa'])
-        return Response({
-            "target": serializer.data['target'],
-            "method": serializer.data['method'],
-            "id": result.id,
-        })
+        user = User.objects.filter(address=address).first()
+        if user:
+            user.phone = phone
+            user.save(force_update=('phone',))
+            if user.payment_method is None and not user.auto_payment:
+                result = send_sms_code.delay(phone, True, "authcode", serializer.data['pa'])
+                return Response({
+                    "target": "authcode",
+                    "method": serializer.data['method'],
+                    "id": result.id,
+                })
+            else:
+                raise AssertionError("Вы не можете зарегестрироваться на активный аккаунт.")
+        else:
+            result = send_sms_code.delay(phone, True, "regcode", serializer.data['pa'])
+            return Response({
+                "target": "regcode",
+                "method": serializer.data['method'],
+                "id": result.id,
+            })
 
 
 class LogoutAPIView(APIView):

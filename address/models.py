@@ -20,7 +20,7 @@ class Address(models.Model):
         return self.get_join()
 
     def get_pa(self) -> str:
-        return f'{sum(map(ord, str(self))):0>12}'
+        return f'{sum(map(ord, str(self).replace("г. Москва, ", ""))):0>12}'
         
     def get_join(self) -> str:
         return ', '.join(filter(bool, (
