@@ -15,21 +15,23 @@ from device.models import Definition
 def set_ws_s_task(self: Task) -> None:
     try:
         definitions = Definition.objects \
-            .filter(
-                device__func='SET',
-                user__ws_status=True
-            ) \
+            .filter(device__func='SET') \
             .values('device_id', 'device__name') \
-            .annotate(numbers=ArrayAgg('number'))
+            .annotate(
+                numbers=ArrayAgg('number'),
+                ws_status_list=ArrayAgg('address__user__ws_status')
+            )
         for definition in definitions:
-            mask = reduce(int.__or__.__call__, (0b1 << (_ - 1) * 2 for _ in definition['numbers']))
+            pins = [
+                number for number, status in
+                zip(definition['numbers'], definition['ws_status_list'])
+                if status
+            ]
+            mask = reduce(int.__or__.__call__, pins) if pins else 0
             event = f"MX210/{definition['device__name']}/SET/DO/MASK"
             CLIENT.publish(event, mask)
-            logging.info("%s %s", event, mask)
+            logging.info("%s %s", event, bin(mask))
     finally:
         self.retry(countdown=15)
 
-
-@worker_ready.connect
-def startup(*args, **kw) -> None:
-    set_ws_s_task.delay()
+set_ws_s_task.delay()

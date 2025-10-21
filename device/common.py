@@ -13,9 +13,9 @@ CLIENT.username_pw_set("device", "edR6hqa+fWWy")
 CLIENT.connect(host="95.183.8.42", port=1883)
 
 
-def set_ws_status(user: User, switch: bool) -> None:
+def set_ws_status(pa: int, switch: bool) -> None:
     encoard = QuerySet(Definition) \
-                .filter(user=user, device__func="SET") \
+                .filter(adress_id=pa, device__func="SET") \
                 .first()
     LOGGER.info(f"MX210/{encoard.device.name}/SET/"
                 f"DO{encoard.number}/{int(switch)}")

@@ -1,6 +1,12 @@
 from django.contrib import admin
-from django.apps import apps
+
+from account.models import User
 
 
-for model in apps.get_app_config('account').get_models():
-    admin.site.register(model)
+class UserAdmin(admin.ModelAdmin):
+    search_fields = ['address__join', 'phone']
+
+    list_display = ['address_id', 'phone', 'address__join']
+    ordering = ['id']
+
+admin.site.register(User, UserAdmin)

@@ -2,5 +2,14 @@ from django.contrib import admin
 
 from django.apps import apps
 
-for model in apps.get_app_config('device').get_models():
-    admin.site.register(model)
+from device.models import Definition, Device
+
+
+class DefinitionAdmin(admin.ModelAdmin):
+    search_fields = ['address__join']
+
+    list_display = ['id', 'address__join', 'number', 'device__name']
+    ordering = ['id']
+
+admin.site.register(Definition, DefinitionAdmin)
+admin.site.register(Device)

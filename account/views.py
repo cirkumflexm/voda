@@ -51,9 +51,7 @@ def release(request: Request, user: User) -> Response:
 @extend_schema(
     summary="Завершения регистрации",
     request=NextDoneId,
-    responses={
-        200: AuthorizationResponse()
-    }
+    responses={200: AuthorizationResponse()}
 )
 class NextDoneView(generics.GenericAPIView):
 
@@ -69,29 +67,32 @@ class NextDoneView(generics.GenericAPIView):
 
 
 @extend_schema(
-    summary="Код подтверждения",
+    summary="Код подтверждения [target=authcode]",
     request=DoubleAuthenticationSerializer,
-    responses={
-        200: AuthorizationResponse()
-    }
+    responses={200: AuthorizationResponse()}
 )
 class DoubleAuthentication(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
-            code, pa, target = task.result
-            if code is not None and code == request.data['code'] and target == 'authcode':
+            code, pa, target, phone = task.result
+            if code is not None \
+                    and code == request.data['code'] \
+                    and target == 'authcode' \
+                    and int(pa) == int(request.data['pa']):
                 task.revoke()
-                return release(request, User.objects.get(address_id=pa))
+                user = User.objects.get(address_id=pa)
+                if user.phone != phone:
+                    user.phone = phone
+                    user.save(force_update=('phone',))
+                return release(request, user)
         return Response("Код введен неверно.", status=403)
 
 
 @extend_schema(
-    summary="Код подтверждения",
+    summary="Код подтверждения [target=regcode]",
     request=DoubleRegistrationSerializer,
-    responses={
-        200: RegistrationUserResponse()
-    }
+    responses={200: RegistrationUserResponse()}
 )
 class DoubleRegistration(generics.GenericAPIView):
 
@@ -99,7 +100,7 @@ class DoubleRegistration(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
-            code, pa, target = task.result
+            code, pa, target, _ = task.result
             if code == request.data['code'] and target == 'regcode':
                 task.revoke()
                 address = Address.objects.filter(pk=pa).first()
@@ -141,9 +142,7 @@ class LoginAPIView(APIView):
     @extend_schema(
         summary="Авторизация",
         request=Authorization,
-        responses={
-            200: ToDoubleNext()
-        }
+        responses={200: ToDoubleNext()}
     )
     @assertion_response
     def post(self, request):
@@ -155,7 +154,7 @@ class LoginAPIView(APIView):
             Q(address_id=int(_login)) | Q(phone=_login.replace('+', ''))
         ).first()
         assert user, "Пользователь не найден"
-        result = send_sms_code.delay(user.phone, True, "authcode", user.address_id)
+        result = send_sms_code.delay(user.phone, True, "authcode", user.address.pk)
         return Response({
             "target": "authcode",
             "method": serialize.data['method'],
@@ -168,9 +167,7 @@ class LoginOperator(APIView):
     @extend_schema(
         summary="Авторизация для операторов",
         request=AuthorizationOperator,
-        responses={
-            200: AuthorizationResponse()
-        }
+        responses={200: AuthorizationResponse()}
     )
     def post(self, request: Request) -> Response:
         _login = request.data['login']
@@ -182,7 +179,6 @@ class LoginOperator(APIView):
 
 
 @extend_schema(
-    summary="Регистрация",
     description="""
 /account/next/ указываем номер квартиры и pa (/address/list/). отправляем смс 
 
@@ -198,36 +194,33 @@ class RegistrationView(GenericAPIView):
     serializer_class = RegistrationUser
 
     @assertion_response
-    @extend_schema(responses={200: ToDoubleNext()})
+    @extend_schema(summary="Регистрация", responses={200: ToDoubleNext()})
     def post(self, request) -> Response:
         serializer = RegistrationUser(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
         address = Address.objects.filter(pa=serializer.data['pa']).first()
         assert address, "К сожалению адрес не подключен к системе."
         address.apartment = serializer.data['apartment']
-        address = Address.objects.filter(pa=address.get_pa()).first()
+        pa = address.get_pa()
+        address = Address.objects.filter(pa=pa).first()
         assert address, "К сожалению адрес не подключен к системе."
         phone = serializer.data['phone'].replace('+', '')
         user = User.objects.filter(address=address).first()
         if user:
-            user.phone = phone
-            user.save(force_update=('phone',))
-            if user.payment_method is None and not user.auto_payment:
-                result = send_sms_code.delay(phone, True, "authcode", serializer.data['pa'])
-                return Response({
-                    "target": "authcode",
-                    "method": serializer.data['method'],
-                    "id": result.id,
-                })
-            else:
-                raise AssertionError("Вы не можете зарегестрироваться на активный аккаунт.")
+            assert not User.objects.filter(phone=phone).exists(), "Номер телефона уже существует."
+            assert user.payment_method is None and not user.auto_payment, \
+                "Вы не можете зарегестрироваться на активный аккаунт."
+            result = send_sms_code.delay(phone, True, "authcode", pa)
         else:
-            result = send_sms_code.delay(phone, True, "regcode", serializer.data['pa'])
-            return Response({
-                "target": "regcode",
-                "method": serializer.data['method'],
-                "id": result.id,
-            })
+            result = send_sms_code.delay(phone, True, "regcode", pa)
+        response_serializer = ToDoubleNext(data={
+            "pa": pa,
+            "target": "authcode",
+            "method": serializer.data['method'],
+            "id": result.id
+        })
+        response_serializer.is_valid()
+        return Response(response_serializer.data)
 
 
 class LogoutAPIView(APIView):

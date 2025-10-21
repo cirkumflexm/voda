@@ -125,6 +125,5 @@ class Switch(GenericAPIView):
 
     def get(self, request: Request) -> Response:
         action, pa = request.query_params.dict().values()
-        user = User.objects.get(address_id=int(pa))
-        set_ws_status(user, action == "on")
+        set_ws_status(pa, action == "on")
         return Response(self.get_serializer().data)

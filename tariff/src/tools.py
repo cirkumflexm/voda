@@ -62,8 +62,6 @@ class BaseMain:
             end_datetime_pp=self.user.end_datetime_pp,
             tariff_plan=self.user.tariff_plan
         )
-        # self.user.tariff_plan.archive = True
-        # set_ws_status(self.user, True)
         self.user.ws_status = True
 
     def extend(self) -> None:

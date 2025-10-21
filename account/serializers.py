@@ -1,4 +1,5 @@
 from copy import copy
+from random import randint
 
 from rest_framework import serializers
 
@@ -47,7 +48,17 @@ class AuthorizationOperator(Authorization):
 
 
 class RegistrationUser(serializers.Serializer):
-    phone = PhoneNumberField(label="Телефон", region='RU')
+    # class __RandomPhoneGenerator(str):
+    #     def __str__(self) -> str:
+    #         return
+
+    phone = PhoneNumberField(
+        label="Телефон", region='RU',
+        default=type("", (str,), {
+            '__str__': lambda _: "+79" + \
+                "".join(str(randint(0, 9)) for _ in range(9))
+        })()
+    )
     apartment = serializers.CharField(label="Квартира")
     pa = Pa.pa
     target = serializers.ChoiceField(
@@ -58,10 +69,15 @@ class RegistrationUser(serializers.Serializer):
     method = MethodCodeChoices.METHOD
 
 
-class ToDoubleNext(RegistrationUser):
+class ToDoubleNext(serializers.Serializer):
     id = serializers.UUIDField(label="Id задачи")
-    phone = None
-    apartment = None
+    target = serializers.ChoiceField(
+        default=TargetCodeChoices.DEFAULT_REGCODE,
+        choices=TargetCodeChoices.CHOICES,
+        label=TargetCodeChoices.LABEL,
+    )
+    method = MethodCodeChoices.METHOD
+    pa = Pa.pa
 
 
 class RegistrationUserResponse(serializers.Serializer):

@@ -45,6 +45,7 @@ api = SmsAero(
 
 create_account: Task
 
+
 @app.task
 def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> None:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
@@ -66,13 +67,16 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
 redis = Redis(db=1)
 
 @app.task()
-def send_sms_code(phone: str, is_user: bool, target: str, pa: Optional[str] = None) -> tuple[str | None, str, str]:
+def send_sms_code(
+        phone: str, is_user: bool,
+        target: str, pa: Optional[str] = None
+) -> tuple[Optional[str], str, str, str]:
     if is_user:
         _rand = randint(100100, 900900)
         message = SMS_MESSAGE % f'{_rand:_}'.replace('_', '-')
         redis.lpush("sms_list", f"Sms to {phone}\n{message}")
         redis.ltrim("sms_list", 0, 9)
         # api.send_sms(user.phone, message)
-        return str(_rand), pa, target
-    return None, pa, target
+        return str(_rand), pa, target, phone
+    return None, pa, target, phone
 
