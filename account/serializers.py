@@ -48,10 +48,6 @@ class AuthorizationOperator(Authorization):
 
 
 class RegistrationUser(serializers.Serializer):
-    # class __RandomPhoneGenerator(str):
-    #     def __str__(self) -> str:
-    #         return
-
     phone = PhoneNumberField(
         label="Телефон", region='RU',
         default=type("", (str,), {
@@ -59,7 +55,6 @@ class RegistrationUser(serializers.Serializer):
                 "".join(str(randint(0, 9)) for _ in range(9))
         })()
     )
-    apartment = serializers.CharField(label="Квартира")
     pa = Pa.pa
     target = serializers.ChoiceField(
         default=TargetCodeChoices.DEFAULT_REGCODE,
@@ -169,13 +164,14 @@ class RegistrationUserMeta(RegistrationUser):
 
 
 class DoubleAuthenticationSerializer(ToDoubleNext):
+    pa = None
     method = None
     target = None
     code = serializers.CharField(min_length=6, max_length=6, label="Код")
 
 
 class DoubleRegistrationSerializer(DoubleAuthenticationSerializer):
-    meta = RegistrationUserMeta()
+    pass
 
 
 # ------------------------------------

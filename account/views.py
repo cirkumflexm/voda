@@ -78,8 +78,7 @@ class DoubleAuthentication(generics.GenericAPIView):
             code, pa, target, phone = task.result
             if code is not None \
                     and code == request.data['code'] \
-                    and target == 'authcode' \
-                    and int(pa) == int(request.data['pa']):
+                    and target == 'authcode':
                 task.revoke()
                 user = User.objects.get(address_id=pa)
                 if user.phone != phone:
@@ -100,18 +99,14 @@ class DoubleRegistration(generics.GenericAPIView):
     def post(self, request: Request) -> Response:
         task = AsyncResult(request.data['id'], app=app)
         if task.ready():
-            code, pa, target, _ = task.result
+            code, pa, target, phone = task.result
             if code == request.data['code'] and target == 'regcode':
                 task.revoke()
                 address = Address.objects.filter(pk=pa).first()
                 assert address, "К сожалению адрес не подключен к системе."
-                meta_serializer = RegistrationUserMeta(data=request.data['meta'])
-                assert meta_serializer.is_valid(), meta_serializer.errors
                 user = User(
-                    phone = meta_serializer.data['phone'],
-                    first_name = "",
-                    last_name = "",
-                    address = address
+                    phone=phone, first_name="",
+                    last_name="", address=address
                 )
                 tariff_plan = TariffPlan.create_test_tariff_plan(user)
                 registration_user_response = RegistrationUserResponse({
@@ -200,22 +195,19 @@ class RegistrationView(GenericAPIView):
         assert serializer.is_valid(), serializer.error_messages
         address = Address.objects.filter(pa=serializer.data['pa']).first()
         assert address, "К сожалению адрес не подключен к системе."
-        address.apartment = serializer.data['apartment']
-        pa = address.get_pa()
-        address = Address.objects.filter(pa=pa).first()
-        assert address, "К сожалению адрес не подключен к системе."
         phone = serializer.data['phone'].replace('+', '')
         user = User.objects.filter(address=address).first()
         if user:
             assert not User.objects.filter(phone=phone).exists(), "Номер телефона уже существует."
             assert user.payment_method is None and not user.auto_payment, \
                 "Вы не можете зарегестрироваться на активный аккаунт."
-            result = send_sms_code.delay(phone, True, "authcode", pa)
+            target = "authcode"
         else:
-            result = send_sms_code.delay(phone, True, "regcode", pa)
+            target = "regcode"
+        result = send_sms_code.delay(phone, True, target, address.pa)
         response_serializer = ToDoubleNext(data={
-            "pa": pa,
-            "target": "authcode",
+            "pa": address.pa,
+            "target": target,
             "method": serializer.data['method'],
             "id": result.id
         })

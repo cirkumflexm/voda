@@ -24,7 +24,6 @@ class Pagination(LimitOffsetPagination):
 )
 class AddressView(ListAPIView):
     queryset = Address.objects \
-        .filter(apartment='') \
         .only('pa', 'join')
     serializer_class = AddressSerializeList
     lookup_field = "query"
