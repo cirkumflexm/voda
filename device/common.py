@@ -1,10 +1,10 @@
 
 import logging
+
 import paho.mqtt.client as mqtt
 from django.db.models import QuerySet
 
-from account.models import User
-from device.models import Device, Definition
+from device.models import Definition
 
 LOGGER = logging.getLogger("mqtt.common")
 

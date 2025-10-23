@@ -1,9 +1,7 @@
 import logging
-
-from django.http import JsonResponse
-from rest_framework import serializers
 from functools import wraps
 
+from rest_framework import serializers
 from rest_framework.response import Response
 
 

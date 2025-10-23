@@ -1,13 +1,12 @@
-from copy import copy
 from random import randint
 
+from phonenumber_field.serializerfields import PhoneNumberField
 from rest_framework import serializers
 
 from account.models import User
-from address.serializers import AddressSerializeChange, AddressSerializeList
+from address.serializers import AddressSerializeChange
 from config.tools import GetPa, Pa
 from tariff.serializers import TariffPlanSerializerWithoutPa
-from phonenumber_field.serializerfields import PhoneNumberField
 
 
 class TargetCodeChoices:

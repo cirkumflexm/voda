@@ -1,8 +1,7 @@
 
 from rest_framework import serializers
 
-from account.models import User
-from account.serializers import UserSerializerGet, UserSerializeBase
+from account.serializers import UserSerializerGet
 from config.tools import Pa
 from .models import *
 

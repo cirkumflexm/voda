@@ -1,10 +1,8 @@
 
 import logging
 
-from celery import Task, group
-from celery.signals import worker_ready
+from celery import Task
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
 from account.models import User

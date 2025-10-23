@@ -5,13 +5,12 @@ __all__ = [
     "ServiceArchive"
 ]
 
-from decimal import Decimal
 from typing import Self
 from uuid import uuid4
 
 from django.core.validators import MinValueValidator
-from django.db.models import QuerySet
 from django.db import models
+from django.db.models import QuerySet
 
 
 class TariffPlan(models.Model):

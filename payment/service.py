@@ -1,11 +1,10 @@
-import logging
-
-from yookassa import Configuration, Payment
-from yookassa.domain.exceptions import ApiError
-from yookassa.domain.common.user_agent import Version
-from yookassa.domain.response import PaymentResponse
-from dotenv import load_dotenv
 from os import getenv
+
+from dotenv import load_dotenv
+from yookassa import Configuration, Payment
+from yookassa.domain.common.user_agent import Version
+from yookassa.domain.exceptions import ApiError
+from yookassa.domain.response import PaymentResponse
 
 load_dotenv()
 

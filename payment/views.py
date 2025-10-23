@@ -2,20 +2,19 @@ import logging
 
 from celery import chain
 from django.core.cache import cache
-from django.http import HttpResponse
+from drf_spectacular.utils import extend_schema
+from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.generics import GenericAPIView
 
-from account.tasks import task_create_account
 from account.models import User, RegistrationCacheModel
+from account.tasks import task_create_account
 from config.tools import assertion_response
 from payment.serializers import CreateRequest, CreateResponse, OnAutoPaymentSerializer, CreateByIdParamsSerializer
 from tariff.serializers import TariffPlanSerializer
 from .models import Payment as ModelPayment
-from .service import Payment, ApiError, create_payment, find_payment
+from .service import ApiError, create_payment
 from .tasks import check, complete
 
 

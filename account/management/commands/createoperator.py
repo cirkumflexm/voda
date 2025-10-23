@@ -1,8 +1,9 @@
 
-from django.core.management.base import BaseCommand, CommandParser
 from django.contrib.auth.hashers import make_password
-from account.models import User
+from django.core.management.base import BaseCommand, CommandParser
 from django.db.models import QuerySet
+
+from account.models import User
 
 
 class Command(BaseCommand):

@@ -16,7 +16,6 @@ from smsaero import SmsAero
 
 from account.models import RegistrationCacheModel
 from config.celery import app
-from tariff.models import TariffPlan
 from tariff.src.tools import Main
 
 load_dotenv()

@@ -1,17 +1,11 @@
-from typing import Self
-
-from django.contrib.auth.models import AbstractUser
 from dataclasses import dataclass
 
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
 from django.db import models
 
-
 __all__ = ["User"]
 
-from django.db.models import QuerySet
-
-from device.models import Definition
 from tariff.models import TariffPlan
 
 

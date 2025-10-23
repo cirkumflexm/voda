@@ -1,3 +1,4 @@
+from zlib import crc32
 
 from django.contrib.postgres.indexes import BTreeIndex
 from django.db import models
@@ -20,7 +21,7 @@ class Address(models.Model):
         return self.get_join()
 
     def get_pa(self) -> str:
-        return f'{sum(map(ord, str(self).replace("г. Москва, ", ""))):0>12}'
+        return f'{crc32(self.get_join().encode())}:0>12'
         
     def get_join(self) -> str:
         return ', '.join(filter(bool, (

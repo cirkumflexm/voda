@@ -1,17 +1,16 @@
 from itertools import product
 
 from django.db import IntegrityError
-from django.db.models import F, QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.generics import GenericAPIView
-from rest_framework.permissions import BasePermission, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from account.models import User
 from address.models import Address
-from config.permissions import get_permission_group, OnlyOperatorOrAdmin
+from config.permissions import OnlyOperatorOrAdmin
 from config.tools import assertion_response
 from device.models import Device, Definition
 from .common import set_ws_status

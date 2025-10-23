@@ -1,15 +1,13 @@
 from decimal import Decimal
-from typing import TypeVar, Callable
-from dateutil.relativedelta import relativedelta
+from typing import TypeVar
 
-from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 from django.db.models import QuerySet
+from django.utils import timezone
 
 from account.models import User
-from device.common import set_ws_status
 from payment.models import Payment
-from tariff.models import TariffPlan, ServiceArchive
-
+from tariff.models import ServiceArchive
 
 UserId = TypeVar("UserId", bound=int)
 

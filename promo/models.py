@@ -1,9 +1,9 @@
+from random import choice, randint
+from string import ascii_letters, digits
+
 from django.db import models, IntegrityError
 
 from account.models import User
-
-from string import ascii_letters, digits
-from random import choice, randint
 
 
 class Promo(models.Model):

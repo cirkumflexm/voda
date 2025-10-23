@@ -1,20 +1,19 @@
-from django.db.models import F
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.generics import GenericAPIView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import BasePermission, IsAuthenticated
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.generics import GenericAPIView
 
 from account.models import User
 from config.tools import assertion_response
 from payment.views import Create
-from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
 from .models import TariffPlan
-from .src.tools import Main, CustomException
+from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
+from .src.tools import Main
 
 
 class Pagination(LimitOffsetPagination):

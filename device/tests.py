@@ -1,6 +1,7 @@
 import logging
 
 from django import setup
+
 setup()
 
 from celery.exceptions import CeleryError

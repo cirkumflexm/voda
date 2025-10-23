@@ -1,12 +1,8 @@
-import logging
-
 from django.core.cache import cache
-from yookassa.domain.response import PaymentResponse
-from yookassa.domain.exceptions.not_found_error import NotFoundError
+
 from account.models import User, RegistrationCacheModel
-from tariff.src.tools import Main
 from config.celery import app
-from account.tasks import task_create_account
+from tariff.src.tools import Main
 from .service import *
 
 

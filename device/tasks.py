@@ -2,10 +2,8 @@ import logging
 from functools import reduce
 
 from celery import Task
-from celery.signals import worker_ready
 from django.contrib.postgres.aggregates import ArrayAgg
 
-from account.models import User
 from config.celery import app
 from device.common import CLIENT
 from device.models import Definition

@@ -1,31 +1,29 @@
+from re import sub, compile
 from uuid import uuid4
 
 from celery.result import AsyncResult
+from django.contrib.auth import logout, login
 from django.contrib.auth.hashers import check_password
 from django.core.cache import cache
 from django.db.models import Q, F
+from django.http.request import HttpRequest
 from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
 from rest_framework import generics, viewsets
-from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import GenericAPIView
-
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from django.http.request import HttpRequest
-from django.contrib.auth import authenticate, logout, login
 from rest_framework_simplejwt.views import TokenRefreshView
-from re import sub, compile
 
 from account.models import User, RegistrationCacheModel
-from account.tasks import task_create_account, send_sms_code
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
     UserSerializerPatch, \
     DoubleAuthenticationSerializer, ToDoubleNext, FastAuthUserSerializer, AuthorizationOperator, \
-    RegistrationUserMeta, DoubleRegistrationSerializer, NextDoneId
+    DoubleRegistrationSerializer, NextDoneId
+from account.tasks import send_sms_code
 from address.models import Address
 from config.celery import app
 from config.tools import assertion_response

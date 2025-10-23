@@ -1,6 +1,5 @@
-from rest_framework.routers import DefaultRouter
-
 from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 
 from .views import TariffPlanView, Activate, TariffChoices, ActivationTestTariff
 

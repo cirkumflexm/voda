@@ -1,7 +1,7 @@
 
-from account.models import User
-
 from django.db import models
+
+from account.models import User
 
 
 class Payment(models.Model):

@@ -1,6 +1,3 @@
-from uuid import uuid4
-
-from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.permissions import IsAuthenticated
@@ -10,7 +7,6 @@ from rest_framework.response import Response
 from config.permissions import get_permission_group
 from promo.models import Promo
 from promo.serializers import PromoCheck
-from tariff.models import TariffPlan
 
 
 @extend_schema(summary="Промокоды")

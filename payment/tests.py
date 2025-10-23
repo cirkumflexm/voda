@@ -1,11 +1,10 @@
 import logging
+from pprint import pprint
 from time import sleep
 
 from django.test import TestCase
+
 from service import *
-
-from pprint import pprint
-
 
 logger = logging.getLogger(__name__)
 
