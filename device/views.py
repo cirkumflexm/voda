@@ -34,7 +34,7 @@ class DefinitionView(viewsets.ModelViewSet):
             'device__func', 'device__id'
         )
     http_method_names = ['get', 'post', 'patch']
-    permission_classes = []
+    permission_classes = [OnlyOperatorOrAdmin, IsAuthenticated]
 
     def list(self, request, *args, **kwargs):
         queryset = super().get_queryset()

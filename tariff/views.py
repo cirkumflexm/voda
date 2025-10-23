@@ -12,7 +12,8 @@ from account.models import User
 from config.tools import assertion_response
 from payment.views import Create
 from .models import TariffPlan
-from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer
+from .serializers import TariffPlanSerializer, TariffChoicesSerializer, ActivationTestTariffSerializer, \
+    ActivateSerializer
 from .src.tools import Main
 
 
@@ -97,13 +98,16 @@ class TariffChoices(viewsets.ModelViewSet):
 
 class Activate(GenericAPIView):
     permission_classes = [IsAuthenticated]
+    serializer_class = ActivateSerializer
 
     @extend_schema(summary="Активация тарифа")
     def get(self, request) -> Response:
         Main(request.user).activate()
         request.user.save()
         request.user.tariff_plan.save()
-        return Response("Ok", 200)
+        response_serializer = self.get_serializer(data={})
+        response_serializer.is_valid()
+        return Response(response_serializer.data)
 
 
 class ActivationTestTariff(GenericAPIView):

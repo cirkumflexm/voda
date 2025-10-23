@@ -41,3 +41,7 @@ class CutTariffSerializer(TariffPlanSerializer):
     class Meta(TariffPlanSerializer.Meta):
         fields = ['uuid', 'name', 'price', 'unit_measurement']
         read_only_fields = ['uuid', 'is_test']
+
+
+class ActivateSerializer(serializers.Serializer):
+    status = serializers.CharField(default="Успешно!")

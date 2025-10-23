@@ -123,7 +123,7 @@ class UserSerializerGet(UserSerializeBase):
     next_tariff_plan = TariffPlanSerializerWithoutPa(read_only=True)
 
 
-class UserSerializerPost(UserSerializeBase):
+class UserSerializer(UserSerializeBase):
     address = AddressSerializeChange()
 
     class Meta(UserSerializeBase.Meta):
@@ -143,7 +143,7 @@ class UserSerializerPost(UserSerializeBase):
         return instance
 
 
-class UserSerializerPatch(UserSerializerPost):
+class UserSerializerPatch(UserSerializer):
     pass
 
 

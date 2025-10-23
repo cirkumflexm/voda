@@ -7,9 +7,8 @@ from django.contrib.auth.hashers import check_password
 from django.core.cache import cache
 from django.db.models import Q, F
 from django.http.request import HttpRequest
-from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view
-from rest_framework import generics, viewsets
-from rest_framework.generics import GenericAPIView
+from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view, OpenApiParameter
+from rest_framework import generics, viewsets, mixins, generics
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -19,14 +18,14 @@ from rest_framework_simplejwt.views import TokenRefreshView
 
 from account.models import User, RegistrationCacheModel
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
-    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializerPost, UserSerializerGet, \
+    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializer, UserSerializerGet, \
     UserSerializerPatch, \
     DoubleAuthenticationSerializer, ToDoubleNext, FastAuthUserSerializer, AuthorizationOperator, \
     DoubleRegistrationSerializer, NextDoneId
 from account.tasks import send_sms_code
 from address.models import Address
 from config.celery import app
-from config.tools import assertion_response
+from config.tools import assertion_response, Pa
 from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
@@ -183,7 +182,7 @@ class LoginOperator(APIView):
 смс придет на тестовый api /account/temp-test/get_sms_list
 """
 )
-class RegistrationView(GenericAPIView):
+class RegistrationView(generics.GenericAPIView):
     serializer_class = RegistrationUser
 
     @assertion_response
@@ -230,7 +229,7 @@ class LogoutAPIView(APIView):
             token = RefreshToken(refresh_token)
             token.blacklist()
             logout(request)
-        except Exception as ex:
+        except Exception:
             return Response("Неверный Refresh token", status=400)
         return Response("Выход успешен", status=200)
 
@@ -239,42 +238,31 @@ class Refresh(TokenRefreshView):
     permission_classes = [IsAuthenticated]
 
 
-@extend_schema_view(
-    list=extend_schema(
-        summary="Получить список пользователей",
-    ),
-    retrieve=extend_schema(
-        summary="Получить пользователя",
-    ),
-    update=extend_schema(exclude=True),
-    partial_update=extend_schema(
-        summary="Изменить данные пользователя"
-    ),
-    create=extend_schema(
-        summary="Добавить пользователя",
-    ),
-    destroy=extend_schema(exclude=True)
-)
 class UserView(viewsets.ModelViewSet):
     queryset = User.objects \
         .filter(groups__id=3) \
+        .annotate(pa=F('address__pa')) \
         .order_by('id')
     permission_classes = [IsAuthenticated]
     lookup_field = "pa"
+    http_method_names = ['get', 'patch']
 
-    def __init__(self, **kw) -> None:
-        super().__init__(**kw)
-        self.description = """
-            Список пользователей:
-            Методы: 
-            Для Админ и Оператор:
-            чтение, изменение, добавление, удаление
-            Для пользователей:
-            чтение
-        """
+    def list(self, *args, **kw):
+        return super().list(*args, **kw)
 
-    def create(self, request, *args, **kw) -> Response:
-        return RegistrationView.post(self, request)
+    @extend_schema(
+        summary="Получить пользователя",
+        parameters=[OpenApiParameter(name="pa", type=str, location="path")],
+    )
+    def retrieve(self, *args, **kw):
+        return super().retrieve(*args, **kw)
+
+    @extend_schema(
+        summary="Изменить данные пользователя",
+        parameters=[OpenApiParameter(name="pa", type=str, location="path")],
+    )
+    def partial_update(self, *args, **kw):
+        return super().partial_update(*args, **kw)
 
     def get_queryset(self):
         if self.request.user.groups.filter(id=3).exists():
@@ -289,7 +277,7 @@ class UserView(viewsets.ModelViewSet):
         elif self.action == 'partial_update':
             return UserSerializerPatch
         else:
-            return UserSerializerPost
+            return UserSerializer
 
 
 @extend_schema(summary="Получить данные пользователя")
@@ -325,7 +313,8 @@ from redis import Redis
 redis = Redis(db=1)
 
 
-class TempGetCodesList(APIView):
+@extend_schema(responses={}, request={})
+class TempGetCodesList(generics.GenericAPIView):
 
     @staticmethod
     def get(*args, **kw) -> Response:
@@ -333,7 +322,7 @@ class TempGetCodesList(APIView):
         return Response([_.decode() for _ in result][::-1])
 
 
-class FastAuthUser(GenericAPIView):
+class FastAuthUser(generics.GenericAPIView):
     serializer_class = FastAuthUserSerializer
 
     @staticmethod
