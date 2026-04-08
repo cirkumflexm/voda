@@ -4,9 +4,9 @@ from account.models import User
 
 
 class UserAdmin(admin.ModelAdmin):
-    search_fields = ['address__join', 'phone']
+    search_fields = ['address__line', 'phone']
 
-    list_display = ['address_id', 'phone', 'address__join']
+    list_display = ['address_id', 'phone', 'address__line']
     ordering = ['id']
 
 admin.site.register(User, UserAdmin)

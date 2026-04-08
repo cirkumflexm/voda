@@ -1,18 +1,19 @@
 
 from rest_framework import serializers
 
+from account.models import User
 from address.models import Address
-from config.tools import GetPa
+from config.tools import GetPa, Pa
 
 
 class AddressSerializeBase(serializers.ModelSerializer, GetPa):
-    join = serializers.SerializerMethodField()
+    line = serializers.SerializerMethodField()
     pa = GetPa.pa
 
     class Meta:
         model = Address
-        fields = ['pa', 'join']
-        read_only_fields = ('pa', 'join')
+        fields = ['pa', 'line']
+        read_only_fields = ('pa', 'line')
 
     @staticmethod
     def get_join(model: Address) -> str:
@@ -34,13 +35,13 @@ class AddressSerializeList(serializers.ModelSerializer, GetPa):
 
     @staticmethod
     def get_address(model: Address) -> str:
-        return str(model.join)
+        return str(model.line)
 
 
 class AddressSerializeChange(AddressSerializeBase):
     class Meta(AddressSerializeBase.Meta):
         fields = AddressSerializeBase.Meta.fields + [
-            'street', 'house', 'building',
+            'street', 'house',
             'apartment', 'fias'
         ]
 

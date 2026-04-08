@@ -2,6 +2,7 @@
 
 import django.contrib.postgres.indexes
 from django.db import migrations, models
+from django.contrib.postgres.operations import TrigramExtension
 
 
 class Migration(migrations.Migration):
@@ -12,6 +13,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        TrigramExtension(),
         migrations.CreateModel(
             name='Address',
             fields=[

@@ -1,13 +1,8 @@
 
 from django.urls import path
-
-from .views import AddressView
-
-# route = DefaultRouter()
-# route.register('addresses', AddressView)
+from .views import AddressView 
 
 
 urlpatterns = [
-    # path('', include(route.urls), name='addresses')
-    path('list/', AddressView.as_view(), name='address_list')
+    path('list/', AddressView.as_view(), name='address_list'),
 ]

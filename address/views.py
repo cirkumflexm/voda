@@ -1,10 +1,9 @@
-from django.contrib.postgres.search import TrigramSimilarity
+from django.contrib.postgres.search import TrigramDistance
 from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
-
-from .models import Address
+from .models import Address 
 from .serializers import AddressSerializeList, RequestQuery
 
 
@@ -19,13 +18,14 @@ class Pagination(LimitOffsetPagination):
 )
 class AddressView(ListAPIView):
     queryset = Address.objects \
-        .only('pa', 'join')
+        .only('pa', 'line')
     serializer_class = AddressSerializeList
     lookup_field = "query"
     pagination_class = None
 
     def get_queryset(self) -> QuerySet:
-        query = self.request.GET.get('query', 'а')
+        query = self.request.GET.get('query', '')
         return self.queryset \
-            .annotate(similarity=TrigramSimilarity('join', query)) \
-            .order_by('-similarity')[:10]
+            .annotate(distance=TrigramDistance('line', query)) \
+            .order_by('distance')[:10]
+

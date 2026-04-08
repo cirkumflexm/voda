@@ -2,14 +2,14 @@
 from rest_framework import serializers
 
 from account.serializers import UserSerializerGet
-from config.tools import Pa
-from .models import *
+from config.tools import GetPa, Pa
+from device.models import Definition, DefinitionAddress, Device
 
 
 class DeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Device
-        fields = ["id", "factory_number", "name", "func"]
+        fields = ["id", "number", "name"]
         read_only_fields = ["id"]
 
 
@@ -18,8 +18,8 @@ class DefinitionSerializerList(serializers.ModelSerializer):
 
     class Meta:
         model = Definition
-        fields = ["id", "device", "number"]
-        read_only_fields = ["id", "device", "number"]
+        fields = ["id", "device", "port"]
+        read_only_fields = ["id", "device", "port"]
         
         
 class UserGroupDefinitionSerializer(UserSerializerGet, Pa):
@@ -34,8 +34,8 @@ class DefinitionSerializerGet(serializers.ModelSerializer):
 
     class Meta:
         model = Definition
-        fields = ['id', 'device', 'number']
-        read_only_fields = ['id', 'device', 'number']
+        fields = ['id', 'device', 'port']
+        read_only_fields = ['id', 'device', 'port']
 
 
 class DefinitionSerializerSet(serializers.ModelSerializer):
@@ -44,7 +44,7 @@ class DefinitionSerializerSet(serializers.ModelSerializer):
 
     class Meta:
         model = Definition
-        fields = ['id', 'device', 'number', 'pa', 'apartment']
+        fields = ['id', 'device', 'port', 'pa', 'apartment']
         read_only_fields = ['id', 'apartment']
 
 
@@ -55,3 +55,24 @@ class SwitchSerializer(serializers.Serializer):
 
 class SwitchResponseSerializer(serializers.Serializer):
     status = serializers.CharField(label="Успешно!", default="Успешно!")
+
+
+class ApartmentAddressDefaultQuery(serializers.Serializer):
+    pa = serializers.CharField(label="Лицевой счет", required=False)
+
+
+class AddressSerializeList(serializers.ModelSerializer, GetPa):
+    address = serializers.SerializerMethodField(label="Адрес")
+    pa = GetPa.pa
+
+    class Meta:
+        model = DefinitionAddress
+        fields = ('address', 'pa')
+        read_only_fields = ('address', 'pa')
+
+    @staticmethod
+    def get_address(model: DefinitionAddress) -> str:
+        return str(model.apartment_value)
+
+
+

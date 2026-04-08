@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from datetime import timedelta
 from pathlib import Path
+from config.env import SECRET_KEY_DJANGO
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -22,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-g*)8#6((amka1o78nsjmeaxvz@!i+468wnk_&v)1a#u7o@n*82'
+SECRET_KEY = SECRET_KEY_DJANGO
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -32,6 +33,9 @@ ALLOWED_HOSTS = ['v.zesu.ru', '127.0.0.1']
 # Application definition
 
 INSTALLED_APPS = [
+    'dal',
+    'dal_select2',
+    'django.contrib.postgres',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,7 +52,7 @@ INSTALLED_APPS = [
     'payment',
     'device',
     'address',
-    'promo'
+    'promo',
 ]
 
 MIDDLEWARE = [
@@ -59,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.HandlerAccessMiddleware',
     'config.middleware.WrapResponseMiddleware'
 ]
 
@@ -95,9 +100,15 @@ DATABASES = {
         'HOST': '95.183.8.42',
         'PORT': '5432',
         'TIME_ZONE': 'Europe/Moscow'
+    },
+    'test': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        'TIME_ZONE': 'Europe/Moscow'
     }
 }
 
+# DATABASES['default'] = DATABASES['test']
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -181,7 +192,8 @@ LOGGING = {
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication'
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'DEFAULT_LIMIT': 30,
@@ -229,3 +241,18 @@ SPECTACULAR_SETTINGS = {
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379'
+
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    },
+}
+
+ADMIN_REORDER = (
+    'sites',
+    {'app': 'account', 'label': 'Аккаунты', 'models': ('account.User',)},
+    {'app': 'address', 'label': 'Адреса', 'models': ('address.Address', 'address.IncompleteAddress')},
+    {'app': 'device', 'label': 'Устройства', 'models': ('device.Device', 'device.DeleteDevice', 'device.LogDevice')},
+    {'app': 'payment', 'label': 'Платежи', 'models': ('payment.Payment',)},
+    {'app': 'promo', 'label': 'Промокоды', 'models': ('promo.Promo', 'promo.PromoActivation')},
+)
