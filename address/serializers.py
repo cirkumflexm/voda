@@ -1,9 +1,8 @@
 
 from rest_framework import serializers
 
-from account.models import User
 from address.models import Address
-from config.tools import GetPa, Pa
+from config.tools import GetPa
 
 
 class AddressSerializeBase(serializers.ModelSerializer, GetPa):

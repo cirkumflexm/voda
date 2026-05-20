@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from functools import wraps
+from typing import TYPE_CHECKING
 
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import MinValueValidator
@@ -6,17 +8,15 @@ from django.db import models
 
 __all__ = ["User"]
 
-from tariff.models import TariffPlan
-
 
 class User(AbstractUser):
-    address = models.OneToOneField(
+    address = models.ForeignKey(
         "address.Address", verbose_name="Адрес",
         null=True, on_delete=models.PROTECT
     )
     balance = models.DecimalField(
         verbose_name="Баланс", max_digits=15, decimal_places=2,
-        default=0., validators=[MinValueValidator(0)]
+        default=0, validators=[MinValueValidator(0)]
     )
     ws_status = models.BooleanField(verbose_name="Статус подачи воды", default=False)
     tariff_plan = models.ForeignKey(
@@ -32,25 +32,18 @@ class User(AbstractUser):
     end_datetime_pp = models.DateTimeField(verbose_name="Дата&Время конца оплаченного периода", blank=True, null=True)
     phone = models.CharField(verbose_name="Номер телефона", max_length=15, null=True, unique=True)
     is_new = models.BooleanField(verbose_name="Новый пользователь", default=True)
-    tariffs = models.ManyToManyField("tariff.TariffPlan", verbose_name="Все тарифы", related_name="users")
     payment_method = models.CharField(max_length=36, verbose_name="ID автоплатежа", null=True, blank=True)
+    is_verified = models.BooleanField(verbose_name="Пользователь подтвержден", default=False, blank=False)
+    definition = models.ForeignKey('device.Definition', on_delete=models.CASCADE, null=True)
+    last_name = None
+    first_name = None
+
+    if TYPE_CHECKING:
+        objects: models.Manager['User']
 
     class Meta:
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
 
     def __str__(self) -> str:
-        return self.username or f"{self.last_name} {self.first_name}"
-
-    def save(self, *args, **kw) -> None:
-        self.username = self.username or self.address.get_pa()
-        if self.phone:
-            self.phone = ''.join(filter(str.isnumeric.__call__, self.phone))
-        super().save(*args, **kw)
-
-
-@dataclass
-class RegistrationCacheModel:
-    method: str
-    user: User
-    tariff_plan: TariffPlan
+        return self.username

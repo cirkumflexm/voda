@@ -1,13 +1,11 @@
 from collections import defaultdict
 from datetime import timedelta
-from base64 import b64encode
 from functools import lru_cache
-from secrets import token_bytes, token_hex
-from turtle import numinput
+from secrets import token_hex
 from uuid import uuid4
 from asgiref.sync import sync_to_async
 from hashlib import sha256
-from typing import Any, Callable, Iterable, Self, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Self, Optional
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.utils import timezone
@@ -32,12 +30,12 @@ def get_pdf_template() -> str:
 
 class DeviceMeta(ModelBase):
     def __new__(
-            cls, name: str, 
-            bases: tuple[type, ...], 
-            attrs: dict[str, Any], 
+            cls, name: str,
+            bases: tuple[type, ...],
+            attrs: dict[str, Any],
             **kwargs: Any
     ) -> ModelBase:
-        for num in range(1, 4):
+        for num in range(1, 9):
             field = property(*cls.port(num))
             field.fget.short_description = f'Порт {num}'  # pyright: ignore[reportOptionalMemberAccess]
             attrs[f'port_{num}'] = field
@@ -53,7 +51,7 @@ class DeviceMeta(ModelBase):
                         .only('port', 'address__apartment', 'address__apartment_type') \
                         .filter(device=self):
                     self._local_definitions[definition.port] = definition
-            definition = self._local_definitions[num] 
+            definition = self._local_definitions[num]
             return definition.address
 
         def __wrapper_fset(self: "Device", address: "DefinitionAddress") -> None:
@@ -118,8 +116,10 @@ class Device(models.Model, metaclass=DeviceMeta):
         verbose_name="Адрес устройства",
     )
     isnot_online = models.BooleanField(editable=False, null=True)
-    definitions: models.Manager["Definition"]
-    objects = DeviceManager()
+
+    if TYPE_CHECKING:
+        objects: models.Manager['Device']
+        definitions: models.Manager["Definition"]
 
     @property
     def status(self) -> str:
@@ -130,7 +130,7 @@ class Device(models.Model, metaclass=DeviceMeta):
     def delete_via(self) -> str:
         if self.delete_at is not None:
             via = self.delete_at - timezone.now()
-            return f'{via.total_seconds() // 3600:.0f} ч.'
+            return f'через {via.total_seconds() // 3600:.0f} ч.'
         else:
             return '-'
     delete_via.fget.short_description = 'Автоудаление'  # pyright: ignore[reportOptionalMemberAccess]
@@ -147,12 +147,12 @@ class Device(models.Model, metaclass=DeviceMeta):
         return self.name
 
     def save(
-            self, *, 
-            force_insert: bool | tuple[ModelBase, ...] = False, 
-            force_update: bool = False, 
-            using: str | None = None, 
+            self, *,
+            force_insert: bool | tuple[ModelBase, ...] = False,
+            force_update: bool = False,
+            using: str | None = None,
             update_fields: Iterable[str] | None = None
-    ) -> None:   
+    ) -> None:
         with transaction.atomic():
             if self.pk is None:
                 street = self.address.street
@@ -201,6 +201,11 @@ class Device(models.Model, metaclass=DeviceMeta):
             'port_1': str(getattr(self, 'port_1') or '-'),
             'port_2': str(getattr(self, 'port_2') or '-'),
             'port_3': str(getattr(self, 'port_3') or '-'),
+            'port_4': str(getattr(self, 'port_4') or '-'),
+            'port_5': str(getattr(self, 'port_5') or '-'),
+            'port_6': str(getattr(self, 'port_6') or '-'),
+            'port_7': str(getattr(self, 'port_7') or '-'),
+            'port_8': str(getattr(self, 'port_8') or '-'),
         }
         return get_pdf_template().format(**context)
 
@@ -215,7 +220,7 @@ class Definition(models.Model):
         verbose_name="Дискретный вход / Дискретный выход",
         null=True,
         validators=[
-            MaxValueValidator(3),
+            MaxValueValidator(8),
             MinValueValidator(1)
         ],
         editable=False
@@ -235,7 +240,7 @@ class Definition(models.Model):
 
         constraints = [
             models.UniqueConstraint(
-                fields=['device', 'port'], 
+                fields=['device', 'port'],
                 name='unique_device_port'
             ),
             models.UniqueConstraint(

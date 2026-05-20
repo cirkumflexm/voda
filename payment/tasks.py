@@ -1,22 +1,23 @@
 from django.core.cache import cache
 
-from account.models import User, RegistrationCacheModel
+from account.models import User
 from config.celery import app
 from tariff.src.tools import Main
 from .service import *
 
 
-@app.task(autoretry_for=(AssertionError, ), max_retries=120, default_retry_delay=5)
-def check(payment_id: str, user_id: int = None, reg_cache_model_id: str = None) -> float:
+@app.task(
+    autoretry_for=(AssertionError, ),
+    max_retries=120,
+    default_retry_delay=5,
+    ignore_result=True,
+    bind=True
+)
+def check(self, payment_id: str, user_id: int) -> float:
     payment = find_payment(payment_id=payment_id)
     assert payment.status == "succeeded", "Оплата не готова."
     if payment.payment_method and payment.payment_method.saved:
-        if user_id:
-            User.objects.filter(id=user_id).update(payment_method=payment.payment_method.id)
-        elif reg_cache_model_id:
-            reg_cache_model: RegistrationCacheModel = cache.get(reg_cache_model_id)
-            reg_cache_model.user.payment_method = payment.payment_method.id
-            cache.set(reg_cache_model_id, reg_cache_model)
+        User.objects.filter(id=user_id).update(payment_method=payment.payment_method.id)
     return float(payment.amount.value)
 
 

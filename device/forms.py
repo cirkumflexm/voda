@@ -11,7 +11,7 @@ from device.models import DefinitionAddress, Device
 
 class DeviceFormMeta(ModelFormMetaclass):
     def __new__(cls, name, bases, attrs):
-        for num in range(1, 4):
+        for num in range(1, 9):
             attrs[f'port_{num}'] = forms.ModelChoiceField(
                 queryset=DefinitionAddress.objects.all(),
                 widget=ModelSelect2(

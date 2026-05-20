@@ -1,7 +1,6 @@
 
 from random import randint
 from unittest import TestCase
-from django.db.models import QuerySet
 from account.models import User
 from address.tests import TestAddress
 from tariff.tests import TestTariff

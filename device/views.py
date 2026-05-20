@@ -211,7 +211,7 @@ class ApartmentAddressDefaultView(ListAPIView):
         pa = self.request.GET.get('pa', None)
         if pa is None:
             return self.queryset.none()
-        return self.queryset.filter(parent_id=pa)[:3] 
+        return self.queryset.filter(parent_id=pa)[:8]
 
 
 class Pdf(APIView):

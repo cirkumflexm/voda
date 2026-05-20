@@ -1,8 +1,7 @@
 import logging
 
 from django import setup
-from lxml import html
-from fast_pdf_gen import generate_pdf, compile_handlebars_template
+from fast_pdf_gen import generate_pdf
 
 from device.models import Device
 

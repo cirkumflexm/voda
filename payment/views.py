@@ -1,21 +1,35 @@
+from json import loads
 import logging
+from typing import Any, cast
 
 from celery import chain
 from django.core.cache import cache
+from django.core.exceptions import ObjectDoesNotExist
 from drf_spectacular.utils import extend_schema
+from functools import lru_cache
+from redis import Redis
+from rest_framework import serializers, views
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from account.models import User, RegistrationCacheModel
+from account.models import User
 from account.tasks import task_create_account
 from config.tools import assertion_response
-from payment.serializers import CreateRequest, CreateResponse, OnAutoPaymentSerializer, CreateByIdParamsSerializer
+from payment.serializers import Amount, Confirmation, CreateRequest, \
+        CreateResponse, OnAutoPaymentSerializer
+from tariff.models import TariffPlan
 from tariff.serializers import TariffPlanSerializer
+from config.tools import Pa
 from .models import Payment as ModelPayment
 from .service import ApiError, create_payment
 from .tasks import check, complete
+
+
+@lru_cache(1)
+def get_redis():
+    return Redis()
 
 
 class Create(GenericAPIView):
@@ -83,46 +97,58 @@ class Create(GenericAPIView):
             )
 
 
-@extend_schema(
-    summary="Создать оплату по id",
-    parameters=[CreateByIdParamsSerializer],
-    responses={
-        200: CreateResponse()
-    }
-)
-class CreateForTestTariff(GenericAPIView):
+class CreateForTestTariff(views.APIView):
+    class CFTTRequestSerializer(serializers.Serializer):
+        id = serializers.UUIDField(label="Id метода")
+        method = serializers.CharField(label="Метод")
 
+    class CFTTResponseSerializer(serializers.Serializer):
+        id = serializers.CharField()
+        description = serializers.CharField()
+        created_at = serializers.CharField()
+        amount = Amount()
+        confirmation = Confirmation()
+        tariff = TariffPlanSerializer(read_only=True)
+        pa = Pa.pa
+
+        class Meta:
+            fields = ["id", "description", "created_at", "amount", "confirmation", "name", "price", "unit_measurement", "pa"]
+
+    @extend_schema(
+        summary="Создать оплату по id",
+        request=CFTTRequestSerializer,
+        responses={200: CFTTResponseSerializer()}
+    )
     @assertion_response
-    def get(self, request: Request) -> Response:
-        serialize = CreateByIdParamsSerializer(data={
-            "id": request.GET['id'],
-            "method": request.GET['method'],
-        })
+    def post(self, request: Request) -> Response:
+        serialize = self.CFTTRequestSerializer(data=request.data)
         assert serialize.is_valid(), serialize.error_messages
-        reg_cache_model: RegistrationCacheModel = cache.get(serialize.data['id'])
-        if not reg_cache_model:
-            return Response(status=403)
-        assert reg_cache_model.method == serialize.data['method'], "Метод не определен."
-        __response = create_payment(
+        data = cast(dict[str, Any], serialize.data)
+        redis = get_redis()
+        result: Any = redis.get(f'activate:{data['id']}')
+        assert result, 'ID не существует.'
+        result = loads(result)
+        user = User.objects.get(id=result['user_id'])
+        if user.tariff_plan is None:
+            raise ObjectDoesNotExist('Текущий тариф пользователя не указан.')
+        payment = create_payment(
             num=1,
-            price=reg_cache_model.tariff_plan.price,
-            tariff_name=reg_cache_model.tariff_plan.name,
-            full_name=f"{reg_cache_model.user.last_name} {reg_cache_model.user.first_name}",
-            user_phone=reg_cache_model.user.phone,
-            user_email=reg_cache_model.user.email,
-            user_id=reg_cache_model.user.address.pa,
-            tariff_id=reg_cache_model.user.tariff_plan.id,
+            price=user.tariff_plan.price,
+            tariff_name=user.tariff_plan.name,
+            full_name=f"{user.last_name} {user.first_name}",
+            user_phone=str(user.phone),
+            user_email='',
+            user_id=getattr(user, 'address_id'),
+            tariff_id=user.tariff_plan.id,
             currency="RUB"
         )
-        __result = __response["response_data"]
-        __task = chain(
-            check.s(__result['id'], reg_cache_model_id=serialize.data['id']),
-            task_create_account.s(serialize.data['id'], __result['id'])
-        )
-        __task.apply_async()
-        __result["tariff"] = TariffPlanSerializer(reg_cache_model.user.tariff_plan).data
-        __result["pa"] = reg_cache_model.user.address.pa
-        return Response(__result)
+        response_data = payment["response_data"]
+        check.delay(payment_id=response_data['id'], user_id=result['user_id'])
+        response_data["tariff"] = TariffPlanSerializer(user.tariff_plan).data
+        response_data["pa"] = getattr(user, 'address_id')
+        response = self.CFTTResponseSerializer(data=response_data)
+        response.is_valid()
+        return Response(data=response.data)
 
 
 @extend_schema(

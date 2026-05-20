@@ -1,4 +1,5 @@
 
+from typing import TYPE_CHECKING
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 
@@ -16,14 +17,17 @@ class Address(models.Model):
     city = models.CharField(verbose_name="Город", max_length=255, editable=False)
     parent = models.ForeignKey("address.Address", on_delete=models.SET_NULL, null=True, editable=False)
 
+    if TYPE_CHECKING:
+        objects: models.Manager["Address"]
+
     class Meta:
         verbose_name = "Адрес (FIAS)"
         verbose_name_plural = "Адреса (FIAS)"
 
         indexes = [
             GistIndex(
-                fields=['line'], 
-                name='line_trgm_idx', 
+                fields=['line'],
+                name='line_trgm_idx',
                 opclasses=['gist_trgm_ops']
             )
         ]

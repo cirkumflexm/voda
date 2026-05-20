@@ -1,10 +1,14 @@
 
+from datetime import datetime
+from hashlib import sha256
+from json import dumps
 import logging
 from base64 import b64encode
 from os import getenv
 from random import randint
 from secrets import token_bytes
 from typing import Optional
+from functools import lru_cache
 
 from celery import Task
 from django.contrib.auth.hashers import make_password
@@ -14,7 +18,7 @@ from dotenv import load_dotenv
 from redis import Redis
 from smsaero import SmsAero
 
-from account.models import RegistrationCacheModel
+from account.models import User
 from config.celery import app
 from tariff.src.tools import Main
 
@@ -37,15 +41,22 @@ SMS_MESSAGE = """
 Код подтверждения: %s
 """
 
-api = SmsAero(
-    SMSAERO_EMAIL, SMSAERO_API_KEY,
-    test_mode=bool(int(SMSAERO_TEST_MODE))
-)
 
-create_account: Task
+@lru_cache(1)
+def get_sms_aero():
+    return SmsAero(
+        email=SMSAERO_EMAIL,
+        api_key=SMSAERO_API_KEY,
+        test_mode=bool(int(SMSAERO_TEST_MODE))
+    )
 
 
-@app.task
+@lru_cache(1)
+def get_redis():
+    return Redis()
+
+
+@app.task()
 def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> None:
     reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
     password = b64encode(token_bytes(9)).decode()
@@ -54,7 +65,6 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
         reg_cache_model.user.tariff_plan_id = 2
         reg_cache_model.user.next_tariff_plan_id = 1
         reg_cache_model.user.save()
-        reg_cache_model.user.groups.add(3)
         reg_cache_model.user.tariffs.add(1)
         reg_cache_model.user.tariffs.add(2)
         _main = Main(reg_cache_model.user, payment_id)
@@ -63,19 +73,25 @@ def task_create_account(payment_value: float, cache_id: str, payment_id: str) ->
         reg_cache_model.user.save()
 
 
-redis = Redis(db=1)
-
-@app.task()
+@app.task(name='send_sms_code', bind=True)
 def send_sms_code(
-        phone: str, is_user: bool,
-        target: str, pa: Optional[str] = None
-) -> tuple[Optional[str], str, str, str]:
-    if is_user:
-        _rand = randint(100100, 900900)
-        message = SMS_MESSAGE % f'{_rand:_}'.replace('_', '-')
-        redis.lpush("sms_list", f"Sms to {phone}\n{message}")
-        redis.ltrim("sms_list", 0, 9)
-        # api.send_sms(user.phone, message)
-        return str(_rand), pa, target, phone
-    return None, pa, target, phone
+            self: Task, phone: int, user_id: int
+        ) -> None:
+    user = User.objects.get(id=user_id)
+    redis = get_redis()
+    code = randint(100100, 900900)
+    message = SMS_MESSAGE % f'{code:_}'.replace('_', '-')
+    code = sha256(str(code).encode()).hexdigest()
+    redis.set(
+        f'code:{self.request.id}:{code}',
+        dumps({
+            'user_id': user_id,
+            'phone': phone,
+            'dttm': datetime.now().isoformat()
+        }),
+        ex=300
+    )
+    redis.lpush("sms_list", f"Sms to {phone}\n{message}")
+    redis.ltrim("sms_list", 0, 9)
+    # api.send_sms(user.phone, message)
 

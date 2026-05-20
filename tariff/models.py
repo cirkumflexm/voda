@@ -10,10 +10,19 @@ from uuid import uuid4
 
 from django.core.validators import MinValueValidator
 from django.db import models
-from django.db.models import QuerySet
+from account.models import User
 
 
 class TariffPlan(models.Model):
+    class Interval(models.TextChoices):
+        DAY = 'day', 'день'
+        MONTH = 'month', 'месяц'
+        TWO_MONTH = 'two_month', 'два месяца'
+        QUARTER = 'quarter', 'квартал'
+        HALFYEAR = 'halfyear', 'полгода'
+        YEAR = 'year', 'год'
+        CONSTANT = 'constant', 'навсегда'
+
     uuid = models.UUIDField(primary_key=False, verbose_name="UUID тарифа", auto_created=True)
     name = models.CharField(max_length=255, verbose_name="Название")
     price = models.DecimalField(
@@ -23,18 +32,12 @@ class TariffPlan(models.Model):
     archive = models.BooleanField(verbose_name="Признак архивности", default=False)
     unit_measurement = models.CharField(
         verbose_name="Единица измерения",
-        max_length=9,
-        choices=(
-            ("day", "день"),
-            ("month", "месяц"),
-            ("two month", "два месяца"),
-            ("quarter", "квартал"),
-            ("halfyear", "полгода"),
-            ("year", "год"),
-            ("constant", "навсегда")
-        )
+        max_length=20,
+        choices=Interval.choices
     )
     is_test = models.BooleanField(verbose_name="Тестовый тариф", default=False)
+    user = models.ForeignKey('account.User', on_delete=models.CASCADE)
+    objects: models.Manager
 
     class Meta:
         verbose_name = "Тариф"
@@ -42,11 +45,33 @@ class TariffPlan(models.Model):
 
     def save(self, *args, **kw):
         self.uuid = uuid4()
+        name = []
+        if self.is_test:
+            name.append('тестовый')
+        name.append('тариф')
+        name.append(self.unit_measurement)
+        name = ' '.join(name)
+        self.name = name
         super().save(*args, **kw)
 
     def __str__(self) -> str:
-        __values = ', '.join(f"{k}={getattr(self, k)}" for k in ('name', 'price'))
-        return "%s(%s)" % (self.__class__.__name__, __values)
+        return self.name
+
+    @classmethod
+    def create_user_planse(cls, user: User) -> None:
+        user.tariff_plan = cls.objects.create(
+            price=1.00,
+            unit_measurement=cls.Interval.DAY,
+            is_test=True,
+            user=user
+        )
+        user.next_tariff_plan = cls.objects.create(
+            price=100.00,
+            unit_measurement=cls.Interval.MONTH,
+            is_test=False,
+            user=user
+        )
+        return user.tariff_plan
 
     @classmethod
     def create_test_tariff_plan(cls, user) -> Self:

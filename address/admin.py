@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from address.models import IncompleteAddress, Address
+from address.models import IncompleteAddress
 
 
 class BaseAddressAdmin(admin.ModelAdmin):

@@ -1,4 +1,4 @@
-from json import dumps, loads
+from json import dumps
 from typing import Any
 from django.contrib import admin
 from django.http import HttpRequest, HttpResponse
@@ -10,26 +10,26 @@ from device.models import Device, LogDevice
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    autocomplete_fields = ['address'] 
-    list_display = ['status', 'name', 'address', 'port_1', 'port_2', 'port_3', 'delete_via', 'data']
+    autocomplete_fields = ['address']
+    list_display = ['status', 'name', 'address', 'delete_via', 'data']
     list_display_links = ['name']
     form = DeviceForm
     actions = None
     ordering = ('-isnot_online',)
 
     def data(self, device: Device):
-        html = '<div style="display:block;text-align:center;">{}</div>' 
+        html = '<div style="display:block;text-align:center;">{}</div>'
         if device.isnot_online is None:
             return format_html(
                 html, format_html(
-                    '<a href="{}">Получить данные</a>', 
+                    '<a href="{}">Получить данные</a>',
                     reverse('device:pdf-download', args=(device.uuid,))
                 ))
         else:
             return format_html(html, '-')
 
     def changelist_view(
-            self, request: HttpRequest, 
+            self, request: HttpRequest,
             extra_context: dict[str, Any] | None = None
     ) -> HttpResponse:
         type(self).data.short_description = format_html('<a href="{}" style="color:var(--link-fg);text-align:center;">Получить все</a>', reverse('device:pdf-download-all'))

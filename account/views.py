@@ -1,5 +1,10 @@
+from functools import lru_cache
+from json import loads
 from re import sub, compile
+import re
+from typing import Any, cast
 from uuid import uuid4
+from hashlib import sha256
 
 from celery.result import AsyncResult
 from django.contrib.auth import logout, login
@@ -7,25 +12,32 @@ from django.contrib.auth.hashers import check_password
 from django.core.cache import cache
 from django.db.models import Q, F
 from django.http.request import HttpRequest
-from drf_spectacular.utils import extend_schema, OpenApiResponse, extend_schema_view, OpenApiParameter
-from rest_framework import generics, viewsets, mixins, generics
+from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
+from rest_framework import viewsets, generics, serializers
+from rest_framework import views
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+from config.tools import GetPa, Pa
+from phonenumber_field.serializerfields import PhoneNumberField
+from random import randint
 
-from account.models import User, RegistrationCacheModel
+from django.db import transaction
+from account.models import User
 from account.serializers import Authorization, AuthorizationResponse, Logout, \
     RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializer, UserSerializerGet, \
     UserSerializerPatch, \
     DoubleAuthenticationSerializer, ToDoubleNext, FastAuthUserSerializer, AuthorizationOperator, \
-    DoubleRegistrationSerializer, NextDoneId
+    DoubleRegistrationSerializer, NextDoneId, MethodCodeChoices, TargetCodeChoices, \
+    TariffPlanSerializerWithoutPa
 from account.tasks import send_sms_code
 from address.models import Address
 from config.celery import app
-from config.tools import assertion_response, Pa
+from config.tools import assertion_response
+from device.models import Definition, Device
 from tariff.models import TariffPlan
 
 PHONE_COMPILE = compile(r'\D')
@@ -45,21 +57,36 @@ def release(request: Request, user: User) -> Response:
     }, status=200)
 
 
-@extend_schema(
-    summary="Завершения регистрации",
-    request=NextDoneId,
-    responses={200: AuthorizationResponse()}
-)
-class NextDoneView(generics.GenericAPIView):
+@lru_cache(1)
+def get_redis():
+    return Redis()
 
+
+class NextDoneView(views.APIView):
+
+    class NDVRequestSerializer(serializers.Serializer):
+        id = serializers.UUIDField(label="Id")
+
+    @extend_schema(
+        summary="Завершение регистрации",
+        request=NDVRequestSerializer,
+        responses={200: AuthorizationResponse()}
+    )
     @assertion_response
     def post(self, request: Request) -> Response:
-        reg_cache_model = cache.get(request.data['id'])
-        assert reg_cache_model, "Не правильный Id"
-        user = User.objects.filter(phone=reg_cache_model.user.phone.replace('+', '')).first()
+        nds = self.NDVRequestSerializer(data=request.data)
+        assert nds.is_valid(), nds.error_messages
+        data = cast(dict[str, Any], nds.validated_data)
+        redis = get_redis()
+        key = f'activate:{data['id']}'
+        result: Any = redis.get(key)
+        if result is None:
+            return Response("ID недействителен.", status=403)
+        redis.delete(key)
+        result = loads(result)
+        user = User.objects.filter(id=result['user_id'], is_verified=True).first()
         assert user, "Регистрация не завершена"
         response = release(request, user)
-        cache.delete(request.data['id'])
         return response
 
 
@@ -85,48 +112,54 @@ class DoubleAuthentication(generics.GenericAPIView):
         return Response("Код введен неверно.", status=403)
 
 
-@extend_schema(
-    summary="Код подтверждения [target=regcode]",
-    request=DoubleRegistrationSerializer,
-    responses={200: RegistrationUserResponse()}
-)
-class DoubleRegistration(generics.GenericAPIView):
+class DoubleRegistration(views.APIView):
 
+    class DRRequestSerializer(serializers.Serializer):
+        id = serializers.UUIDField(label="Id операции")
+        code = serializers.CharField(label="Код")
+
+        def validate_code(self, value: str) -> str:
+            return re.sub(r'[^\d]', '', value)
+
+    class DRResponseSerializer(serializers.Serializer):
+        pa = serializers.CharField(label="Лицевой счет")
+        new = serializers.BooleanField(label="Не активирован ранее")
+        status = serializers.CharField(default="Успешно!", label="Статус")
+        action = serializers.CharField(default="registration", label="Действие")
+        id = serializers.UUIDField(label="Id операции")
+        tariff_plan = TariffPlanSerializerWithoutPa(read_only=True, label="Тариф")
+        method = serializers.CharField(label="Метод", default="payment")
+
+    @extend_schema(
+        summary="Код подтверждения [target=regcode]",
+        request=DRRequestSerializer,
+        responses={200: DRResponseSerializer()}
+    )
     @assertion_response
     def post(self, request: Request) -> Response:
-        task = AsyncResult(request.data['id'], app=app)
-        if task.ready():
-            code, pa, target, phone = task.result
-            if code == request.data['code'] and target == 'regcode':
-                task.revoke()
-                address = Address.objects.filter(pk=pa).first()
-                assert address, "К сожалению адрес не подключен к системе."
-                user = User(
-                    phone=phone, first_name="",
-                    last_name="", address=address
-                )
-                tariff_plan = TariffPlan.create_test_tariff_plan(user)
-                registration_user_response = RegistrationUserResponse({
-                    'pa': address.pa,
-                    'new': Address.objects \
-                        .filter(pa=address.pa).exists(),
-                    'tariff_plan': tariff_plan,
-                    'id': uuid4()
-                }).data
-                cache.set(
-                    registration_user_response['id'],
-                    RegistrationCacheModel(
-                        method=registration_user_response['method'],
-                        user=user,
-                        tariff_plan=tariff_plan
-                    ),
-                    timeout=3600*24
-                )
-                return Response(
-                    registration_user_response,
-                    status=200
-                )
-        return Response("Код введен неверно.", status=403)
+        drs = self.DRRequestSerializer(data=request.data)
+        assert drs.is_valid(), drs.error_messages
+        data = cast(dict[str, Any], drs.validated_data)
+        redis = get_redis()
+        code = sha256(data['code'].encode()).hexdigest()
+        key = f'code:{data['id']}:{code}'
+        result: Any = redis.get(key)
+        if result is None:
+            return Response("Код введен неверно.", status=403)
+        redis.delete(key)
+        redis.set(f'activate:{data['id']}', result, ex=300)
+        result = loads(result)
+        user = User.objects.get(id=result['user_id'])
+        TariffPlan.create_user_planse(user)
+        user.is_verified = True
+        user.save(update_fields=('is_verified', 'tariff_plan', 'next_tariff_plan'))
+        rurs = self.DRResponseSerializer({
+            'pa': getattr(user, 'address_id'),
+            'new': user.is_new,
+            'tariff_plan': user.tariff_plan,
+            'id': data['id']
+        })
+        return Response(rurs.data, status=200)
 
 
 class LoginAPIView(APIView):
@@ -182,34 +215,67 @@ class LoginOperator(APIView):
 смс придет на тестовый api /account/temp-test/get_sms_list
 """
 )
-class RegistrationView(generics.GenericAPIView):
-    serializer_class = RegistrationUser
+class RegistrationView(views.APIView):
 
+    class RVSerializerRequest(serializers.Serializer):
+        phone = PhoneNumberField(
+            label="Телефон", region='RU',
+            default=type("", (str,), {
+                '__str__': lambda _: "+79" + \
+                    "".join(str(randint(0, 9)) for _ in range(9))
+            })()
+        )
+        pa = Pa.pa
+        target = serializers.ChoiceField(
+            default=TargetCodeChoices.DEFAULT_REGCODE,
+            choices=TargetCodeChoices.CHOICES,
+            label=TargetCodeChoices.LABEL,
+        )
+        method = MethodCodeChoices.METHOD
+
+    class RVSerializerResponse(RVSerializerRequest):
+        phone = None
+        id = serializers.UUIDField()
+
+    @extend_schema(
+        summary="Регистрация",
+        request=RVSerializerRequest,
+        responses={200: RVSerializerResponse()}
+    )
     @assertion_response
-    @extend_schema(summary="Регистрация", responses={200: ToDoubleNext()})
     def post(self, request) -> Response:
-        serializer = RegistrationUser(data=request.data)
+        serializer = self.RVSerializerRequest(data=request.data)
         assert serializer.is_valid(), serializer.error_messages
-        address = Address.objects.filter(pa=serializer.data['pa']).first()
-        assert address, "К сожалению адрес не подключен к системе."
-        phone = serializer.data['phone'].replace('+', '')
-        user = User.objects.filter(address=address).first()
+        data = cast(dict[str, Any], serializer.validated_data)
+        address = Address.objects.filter(pa=data['pa']).first()
+        assert address, "Адреса не существует."
+        definition = Definition.objects.filter(address_id=data['pa']).first()
+        assert definition, "К сожалению адрес не подключен к системе."
+        phone = str(data['phone'])
+        assert not User.objects.filter(phone=phone).exists(), \
+                "Номер телефона уже существует."
+        user = User.objects.filter(address_id=address.pa).first()
         if user:
-            assert not User.objects.filter(phone=phone).exists(), "Номер телефона уже существует."
-            assert user.payment_method is None and not user.auto_payment, \
-                "Вы не можете зарегестрироваться на активный аккаунт."
-            target = "authcode"
+            if user.is_verified:
+                assert user.payment_method is None and not user.auto_payment, \
+                        "Вы не можете зарегестрироваться на активный аккаунт."
         else:
-            target = "regcode"
-        result = send_sms_code.delay(phone, True, target, address.pa)
-        response_serializer = ToDoubleNext(data={
+            user = User.objects.create(
+                address=address,
+                definition=definition,
+                phone=phone,
+                username = f'u{address.pa}'
+            )
+            user.groups.add(3)
+        result: AsyncResult = send_sms_code.delay(phone, getattr(user, 'id'))
+        response = self.RVSerializerResponse(data={
             "pa": address.pa,
-            "target": target,
-            "method": serializer.data['method'],
+            "target": data['target'],
+            "method": data['method'],
             "id": result.id
         })
-        response_serializer.is_valid()
-        return Response(response_serializer.data)
+        response.is_valid()
+        return Response(response.data)
 
 
 class LogoutAPIView(APIView):
