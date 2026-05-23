@@ -1,54 +1,52 @@
 from functools import lru_cache
-from json import loads
-from re import sub, compile
-import re
-from typing import Any, cast
-from uuid import uuid4
 from hashlib import sha256
+from json import loads
+from random import randint
+from re import sub
+from typing import Any, cast
 
 from celery.result import AsyncResult
-from django.contrib.auth import logout, login
+from django.contrib.auth import login, logout
 from django.contrib.auth.hashers import check_password
-from django.core.cache import cache
-from django.db.models import Q, F
+from django.db.models import F, Q
 from django.http.request import HttpRequest
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
-from rest_framework import viewsets, generics, serializers
-from rest_framework import views
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from phonenumber_field.serializerfields import PhoneNumberField
+from rest_framework import generics, serializers, views, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-from config.tools import GetPa, Pa
-from phonenumber_field.serializerfields import PhoneNumberField
-from random import randint
 
-from django.db import transaction
 from account.models import User
-from account.serializers import Authorization, AuthorizationResponse, Logout, \
-    RegistrationUser, RegistrationUserResponse, DataSerializer, UserSerializer, UserSerializerGet, \
-    UserSerializerPatch, \
-    DoubleAuthenticationSerializer, ToDoubleNext, FastAuthUserSerializer, AuthorizationOperator, \
-    DoubleRegistrationSerializer, NextDoneId, MethodCodeChoices, TargetCodeChoices, \
-    TariffPlanSerializerWithoutPa
+from account.serializers import (
+    AuthorizationOperator,
+    AuthorizationResponse,
+    DataSerializer,
+    DoubleAuthSerializer,
+    FastAuthUserSerializer,
+    Logout,
+    MethodCodeChoices,
+    TargetCodeChoices,
+    TariffPlanSerializerWithoutPa,
+    UserSerializer,
+    UserSerializerGet,
+    UserSerializerPatch,
+)
 from account.tasks import send_sms_code
 from address.models import Address
-from config.celery import app
-from config.tools import assertion_response
-from device.models import Definition, Device
+from config.tools import Pa, assertion_response
+from device.models import Definition
 from tariff.models import TariffPlan
 
-PHONE_COMPILE = compile(r'\D')
 
-
-def release(request: Request, user: User) -> Response:
-    request: HttpRequest
+def release(request: HttpRequest, user: User) -> Response:
     login(request, user)
     refresh = RefreshToken.for_user(user)
     refresh.payload.update({
-        'user_id': user.id,
+        'user_id': getattr(user, 'id'),
         'username': user.username
     })
     return Response({
@@ -84,42 +82,37 @@ class NextDoneView(views.APIView):
             return Response("ID недействителен.", status=403)
         redis.delete(key)
         result = loads(result)
-        user = User.objects.filter(id=result['user_id'], is_verified=True).first()
+        user = User.objects \
+                .filter(id=result['user_id'], is_verified=True).first()
         assert user, "Регистрация не завершена"
-        response = release(request, user)
+        response = release(request._request, user)
         return response
 
 
-@extend_schema(
-    summary="Код подтверждения [target=authcode]",
-    request=DoubleAuthenticationSerializer,
-    responses={200: AuthorizationResponse()}
-)
 class DoubleAuthentication(generics.GenericAPIView):
+
+    @extend_schema(
+        summary="Код подтверждения [target=authcode]",
+        request=DoubleAuthSerializer,
+        responses={200: AuthorizationResponse()}
+    )
     def post(self, request: Request) -> Response:
-        task = AsyncResult(request.data['id'], app=app)
-        if task.ready():
-            code, pa, target, phone = task.result
-            if code is not None \
-                    and code == request.data['code'] \
-                    and target == 'authcode':
-                task.revoke()
-                user = User.objects.get(address_id=pa)
-                if user.phone != phone:
-                    user.phone = phone
-                    user.save(force_update=('phone',))
-                return release(request, user)
-        return Response("Код введен неверно.", status=403)
+        das = DoubleAuthSerializer(data=request.data)
+        assert das.is_valid(), das.error_messages
+        data = cast(dict[str, Any], das.validated_data)
+        redis = get_redis()
+        code = sha256(data['code'].encode()).hexdigest()
+        key = f'code:{data['id']}:{code}'
+        result: Any = redis.get(key)
+        if result is None:
+            return Response("Код введен неверно.", status=403)
+        result = loads(result)
+        redis.delete(key)
+        user = User.objects.get(address_id=result['user_id'])
+        return release(request._request, user)
 
 
 class DoubleRegistration(views.APIView):
-
-    class DRRequestSerializer(serializers.Serializer):
-        id = serializers.UUIDField(label="Id операции")
-        code = serializers.CharField(label="Код")
-
-        def validate_code(self, value: str) -> str:
-            return re.sub(r'[^\d]', '', value)
 
     class DRResponseSerializer(serializers.Serializer):
         pa = serializers.CharField(label="Лицевой счет")
@@ -132,14 +125,14 @@ class DoubleRegistration(views.APIView):
 
     @extend_schema(
         summary="Код подтверждения [target=regcode]",
-        request=DRRequestSerializer,
+        request=DoubleAuthSerializer,
         responses={200: DRResponseSerializer()}
     )
     @assertion_response
     def post(self, request: Request) -> Response:
-        drs = self.DRRequestSerializer(data=request.data)
-        assert drs.is_valid(), drs.error_messages
-        data = cast(dict[str, Any], drs.validated_data)
+        das = DoubleAuthSerializer(data=request.data)
+        assert das.is_valid(), das.error_messages
+        data = cast(dict[str, Any], das.validated_data)
         redis = get_redis()
         code = sha256(data['code'].encode()).hexdigest()
         key = f'code:{data['id']}:{code}'
@@ -164,28 +157,48 @@ class DoubleRegistration(views.APIView):
 
 class LoginAPIView(APIView):
 
+    class LAVRequestSerializer(serializers.Serializer):
+        login = serializers.CharField(label="Логин")
+        target = serializers.ChoiceField(
+            default=TargetCodeChoices.DEFAULT_AUTHCODE,
+            choices=TargetCodeChoices.CHOICES,
+            label=TargetCodeChoices.LABEL,
+        )
+        method = MethodCodeChoices.METHOD
+
+    class LAVResponseSerializer(serializers.Serializer):
+        id = serializers.UUIDField(label="Id задачи")
+        target = serializers.ChoiceField(
+            default=TargetCodeChoices.DEFAULT_REGCODE,
+            choices=TargetCodeChoices.CHOICES,
+            label=TargetCodeChoices.LABEL,
+        )
+        method = MethodCodeChoices.METHOD
+        pa = Pa.pa
+
     @extend_schema(
         summary="Авторизация",
-        request=Authorization,
-        responses={200: ToDoubleNext()}
+        request=LAVRequestSerializer,
+        responses={200: LAVResponseSerializer()}
     )
     @assertion_response
     def post(self, request):
-        serialize = Authorization(data=request.data)
-        assert serialize.is_valid(), serialize.errors
-        _login = serialize.data['login']
-        assert _login, "Данные введены некорректно."
+        serialize = self.LAVRequestSerializer(data=request.data)
+        assert serialize.is_valid(), serialize.error_messages
+        data = cast(dict[str, Any], serialize.validated_data)
         user = User.objects.filter(
-            Q(address_id=int(_login)) | Q(phone=_login.replace('+', ''))
+            Q(address_id=data['login']) | Q(phone=data['login'])
         ).first()
-        assert user, "Пользователь не найден"
-        result = send_sms_code.delay(user.phone, True, "authcode", user.address.pk)
-        return Response({
+        if user is None:
+            return Response("Пользователь не найден", status=404)
+        result: AsyncResult = send_sms_code.delay(user.phone, user.pk)
+        response = self.LAVResponseSerializer(data={
             "target": "authcode",
-            "method": serialize.data['method'],
+            "method": data['method'],
             "id": result.id,
         })
-
+        response.is_valid()
+        return Response(response.data)
 
 class LoginOperator(APIView):
 
@@ -205,7 +218,7 @@ class LoginOperator(APIView):
 
 @extend_schema(
     description="""
-/account/next/ указываем номер квартиры и pa (/address/list/). отправляем смс 
+/account/next/ указываем номер квартиры и pa (/address/list/). отправляем смс
 
 /accont/registration/submit/ вводим полученный код из смс. далее получаем id задачи (не uuid тарифа)
 
@@ -267,7 +280,7 @@ class RegistrationView(views.APIView):
                 username = f'u{address.pa}'
             )
             user.groups.add(3)
-        result: AsyncResult = send_sms_code.delay(phone, getattr(user, 'id'))
+        result: AsyncResult = send_sms_code.delay(phone, user.pk)
         response = self.RVSerializerResponse(data={
             "pa": address.pa,
             "target": data['target'],
@@ -334,7 +347,7 @@ class UserView(viewsets.ModelViewSet):
         if self.request.user.groups.filter(id=3).exists():
             self.queryset = self.queryset \
                 .select_related('address') \
-                .filter(id=self.request.user.id)
+                .filter(id=self.request.user.pk)
         return self.queryset.annotate(pa=F('address_id'))
 
     def get_serializer_class(self):
@@ -374,7 +387,6 @@ class MyUserView(generics.RetrieveAPIView):
 # --------------------------
 
 from redis import Redis
-
 
 redis = Redis(db=1)
 

@@ -1,3 +1,5 @@
+
+import re
 from random import randint
 
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -160,6 +162,14 @@ class RegistrationUserMeta(RegistrationUser):
     target = None
     method = None
     pa = None
+
+
+class DoubleAuthSerializer(serializers.Serializer):
+    id = serializers.UUIDField(label="Id операции")
+    code = serializers.CharField(label="Код")
+
+    def validate_code(self, value: str) -> str:
+        return re.sub(r'[^\d]', '', value)
 
 
 class DoubleAuthenticationSerializer(ToDoubleNext):

@@ -1,6 +1,7 @@
 
 from random import randint
 from unittest import TestCase
+
 from account.models import User
 from address.tests import TestAddress
 from tariff.tests import TestTariff

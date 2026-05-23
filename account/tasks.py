@@ -1,14 +1,13 @@
 
-from datetime import datetime
-from hashlib import sha256
-from json import dumps
 import logging
 from base64 import b64encode
+from datetime import datetime
+from functools import lru_cache
+from hashlib import sha256
+from json import dumps
 from os import getenv
 from random import randint
 from secrets import token_bytes
-from typing import Optional
-from functools import lru_cache
 
 from celery import Task
 from django.contrib.auth.hashers import make_password
@@ -54,23 +53,6 @@ def get_sms_aero():
 @lru_cache(1)
 def get_redis():
     return Redis()
-
-
-@app.task()
-def task_create_account(payment_value: float, cache_id: str, payment_id: str) -> None:
-    reg_cache_model: RegistrationCacheModel = cache.get(cache_id)
-    password = b64encode(token_bytes(9)).decode()
-    with transaction.atomic():
-        reg_cache_model.user.password = make_password(password)
-        reg_cache_model.user.tariff_plan_id = 2
-        reg_cache_model.user.next_tariff_plan_id = 1
-        reg_cache_model.user.save()
-        reg_cache_model.user.tariffs.add(1)
-        reg_cache_model.user.tariffs.add(2)
-        _main = Main(reg_cache_model.user, payment_id)
-        _main.add_balance(payment_value)
-        _main.activate()
-        reg_cache_model.user.save()
 
 
 @app.task(name='send_sms_code', bind=True)
