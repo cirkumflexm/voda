@@ -76,27 +76,10 @@ class ToDoubleNext(serializers.Serializer):
     pa = Pa.pa
 
 
-class RegistrationUserResponse(serializers.Serializer):
-    pa = serializers.CharField(label="Лицевой счет")
-    new = serializers.BooleanField(label="Не активирован ранее")
-    status = serializers.CharField(default="Успешно!", label="Статус")
-    action = serializers.CharField(default="registration", label="Действие")
-    id = serializers.UUIDField(label="Id операции")
-    tariff_plan = TariffPlanSerializerWithoutPa(read_only=True, label="Тариф")
-    method = serializers.CharField(label="Метод", default="payment")
-
 
 class AuthorizationResponse(serializers.Serializer):
     refresh = serializers.CharField()
     access = serializers.CharField()
-
-
-class NextDoneId(serializers.Serializer):
-    id = serializers.UUIDField(label="Id")
-
-
-class Logout(serializers.Serializer):
-    refresh = serializers.CharField()
 
 
 class UserSerializeBase(serializers.ModelSerializer, GetPa):

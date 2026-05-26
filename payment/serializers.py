@@ -1,7 +1,6 @@
 
 from rest_framework import serializers
 
-from account.serializers import AuthorizationResponse
 from config.tools import Pa
 from tariff.serializers import TariffPlanSerializer
 
@@ -38,7 +37,6 @@ class CreateResponse(serializers.Serializer):
     amount = Amount()
     confirmation = Confirmation()
     tariff = TariffPlanSerializer(read_only=True)
-    auth = AuthorizationResponse(read_only=True)
     pa = Pa.pa
 
     class Meta:

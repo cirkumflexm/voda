@@ -1,11 +1,9 @@
 
-from pathlib import Path
+from config.settings.base_dir import BASE_DIR
 import environ
-import os
 
 env = environ.Env()
-environ.Env.read_env(
-        os.path.join(Path(__file__).resolve().parent.parent, '.env'))
+environ.Env.read_env(BASE_DIR / '.env')
 
 SECRET_KEY = env("SECRET_KEY")
 SECRET_KEY_DJANGO = env("SECRET_KEY_DJANGO")
@@ -16,3 +14,11 @@ SMSAERO_TEST_MODE = env("SMSAERO_TEST_MODE")
 START_RANGE_PERSONAL_ID = env("START_RANGE_PERSONAL_ID")
 NANOMQ_USERNAME = env.str("NANOMQ_USERNAME")
 NANOMQ_PASSWORD = env.str("NANOMQ_PASSWORD")
+DB_NAME = env.str("DB_NAME")
+DB_USERNAME = env.str("DB_USERNAME")
+DB_PASSWORD = env.str("DB_PASSWORD")
+DB_HOST = env.str("DB_HOST")
+DB_PORT = env.str("DB_PORT")
+EMAIL_HOST_USER = env.str("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env.str("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = env.str("DEFAULT_FROM_EMAIL")

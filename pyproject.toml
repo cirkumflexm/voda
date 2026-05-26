@@ -78,6 +78,7 @@ dependencies = [
     "uvicorn==0.44.0",
     "uvloop==0.22.1",
     "vine==5.1.0",
+    "vulture>=2.16",
     "watchfiles==1.1.1",
     "wcwidth==0.2.13",
     "websockets==16.0",

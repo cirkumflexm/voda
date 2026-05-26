@@ -15,7 +15,6 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 
 from account.models import User
-from account.tasks import task_create_account
 from config.tools import assertion_response
 from payment.serializers import Amount, Confirmation, CreateRequest, \
         CreateResponse, OnAutoPaymentSerializer

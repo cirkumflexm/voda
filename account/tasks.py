@@ -1,25 +1,18 @@
 
 import logging
-from base64 import b64encode
 from datetime import datetime
 from functools import lru_cache
 from hashlib import sha256
 from json import dumps
 from os import getenv
 from random import randint
-from secrets import token_bytes
 
 from celery import Task
-from django.contrib.auth.hashers import make_password
-from django.core.cache import cache
-from django.db import transaction
 from dotenv import load_dotenv
 from redis import Redis
 from smsaero import SmsAero
 
-from account.models import User
 from config.celery import app
-from tariff.src.tools import Main
 
 load_dotenv()
 
@@ -59,7 +52,6 @@ def get_redis():
 def send_sms_code(
             self: Task, phone: int, user_id: int
         ) -> None:
-    user = User.objects.get(id=user_id)
     redis = get_redis()
     code = randint(100100, 900900)
     message = SMS_MESSAGE % f'{code:_}'.replace('_', '-')

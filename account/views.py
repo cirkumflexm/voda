@@ -2,32 +2,33 @@ from functools import lru_cache
 from hashlib import sha256
 from json import loads
 from random import randint
-from re import sub
 from typing import Any, cast
 
 from celery.result import AsyncResult
 from django.contrib.auth import login, logout
-from django.contrib.auth.hashers import check_password
+from django.core.cache import cache
 from django.db.models import F, Q
 from django.http.request import HttpRequest
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, extend_schema
 from phonenumber_field.serializerfields import PhoneNumberField
+from redis import Redis
 from rest_framework import generics, serializers, views, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.token_blacklist.models import (
+    BlacklistedToken,
+    OutstandingToken,
+)
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from account.models import User
 from account.serializers import (
-    AuthorizationOperator,
     AuthorizationResponse,
     DataSerializer,
     DoubleAuthSerializer,
-    FastAuthUserSerializer,
-    Logout,
     MethodCodeChoices,
     TargetCodeChoices,
     TariffPlanSerializerWithoutPa,
@@ -55,9 +56,17 @@ def release(request: HttpRequest, user: User) -> Response:
     }, status=200)
 
 
-@lru_cache(1)
-def get_redis():
-    return Redis()
+def remote_logout(user: User) -> None:
+    tokens = OutstandingToken.objects.filter(user=user)
+    entries = [
+        BlacklistedToken(token=token)
+        for token in tokens
+    ]
+    if entries:
+        BlacklistedToken.objects.bulk_create(
+            entries,
+            ignore_conflicts=True
+        )
 
 
 class NextDoneView(views.APIView):
@@ -75,12 +84,11 @@ class NextDoneView(views.APIView):
         nds = self.NDVRequestSerializer(data=request.data)
         assert nds.is_valid(), nds.error_messages
         data = cast(dict[str, Any], nds.validated_data)
-        redis = get_redis()
         key = f'activate:{data['id']}'
-        result: Any = redis.get(key)
+        result: Any = cache.get(key)
         if result is None:
             return Response("ID недействителен.", status=403)
-        redis.delete(key)
+        cache.delete(key)
         result = loads(result)
         user = User.objects \
                 .filter(id=result['user_id'], is_verified=True).first()
@@ -100,15 +108,14 @@ class DoubleAuthentication(generics.GenericAPIView):
         das = DoubleAuthSerializer(data=request.data)
         assert das.is_valid(), das.error_messages
         data = cast(dict[str, Any], das.validated_data)
-        redis = get_redis()
         code = sha256(data['code'].encode()).hexdigest()
         key = f'code:{data['id']}:{code}'
-        result: Any = redis.get(key)
+        result: Any = cache.get(key)
         if result is None:
             return Response("Код введен неверно.", status=403)
         result = loads(result)
-        redis.delete(key)
-        user = User.objects.get(address_id=result['user_id'])
+        cache.delete(key)
+        user = User.objects.get(pk=result['user_id'])
         return release(request._request, user)
 
 
@@ -133,14 +140,13 @@ class DoubleRegistration(views.APIView):
         das = DoubleAuthSerializer(data=request.data)
         assert das.is_valid(), das.error_messages
         data = cast(dict[str, Any], das.validated_data)
-        redis = get_redis()
         code = sha256(data['code'].encode()).hexdigest()
         key = f'code:{data['id']}:{code}'
-        result: Any = redis.get(key)
+        result: Any = cache.get(key)
         if result is None:
             return Response("Код введен неверно.", status=403)
-        redis.delete(key)
-        redis.set(f'activate:{data['id']}', result, ex=300)
+        cache.delete(key)
+        cache.set(f'activate:{data['id']}', result, timeout=300)
         result = loads(result)
         user = User.objects.get(id=result['user_id'])
         TariffPlan.create_user_planse(user)
@@ -194,26 +200,12 @@ class LoginAPIView(APIView):
         result: AsyncResult = send_sms_code.delay(user.phone, user.pk)
         response = self.LAVResponseSerializer(data={
             "target": "authcode",
+            "pa": getattr(user, 'address_id'),
             "method": data['method'],
             "id": result.id,
         })
         response.is_valid()
         return Response(response.data)
-
-class LoginOperator(APIView):
-
-    @extend_schema(
-        summary="Авторизация для операторов",
-        request=AuthorizationOperator,
-        responses={200: AuthorizationResponse()}
-    )
-    def post(self, request: Request) -> Response:
-        _login = request.data['login']
-        password = request.data['password']
-        user = User.objects.filter(username=_login).first()
-        assert user and check_password(password, user.password), \
-            "Неправильно введен логин или пароль."
-        return release(request, user)
 
 
 @extend_schema(
@@ -231,12 +223,15 @@ class LoginOperator(APIView):
 class RegistrationView(views.APIView):
 
     class RVSerializerRequest(serializers.Serializer):
+
+        class PhoneAutoGenerator:
+            def __str__(self) -> str:
+                return "+79" + "".join(
+                        str(randint(0, 9)) for _ in range(9))
+
         phone = PhoneNumberField(
             label="Телефон", region='RU',
-            default=type("", (str,), {
-                '__str__': lambda _: "+79" + \
-                    "".join(str(randint(0, 9)) for _ in range(9))
-            })()
+            default=PhoneAutoGenerator()
         )
         pa = Pa.pa
         target = serializers.ChoiceField(
@@ -272,6 +267,7 @@ class RegistrationView(views.APIView):
             if user.is_verified:
                 assert user.payment_method is None and not user.auto_payment, \
                         "Вы не можете зарегестрироваться на активный аккаунт."
+                remote_logout(user)
         else:
             user = User.objects.create(
                 address=address,
@@ -291,25 +287,27 @@ class RegistrationView(views.APIView):
         return Response(response.data)
 
 
-class LogoutAPIView(APIView):
+class LogoutAPIView(views.APIView):
     permission_classes = [IsAuthenticated]
+
+    class LAVRequestSerializer(serializers.Serializer):
+        refresh = serializers.CharField()
 
     @extend_schema(
         summary="Выход",
-        request=Logout,
-        responses={
-            200: AuthorizationResponse(),
-            401: OpenApiResponse()
-        }
+        request=LAVRequestSerializer,
+        responses={200: AuthorizationResponse()}
     )
-    def post(self, request):
-        refresh_token = request.data.get('refresh', '')
+    def post(self, request: Request):
+        lavr = self.LAVRequestSerializer(data=request.data)
+        assert lavr.is_valid(), lavr.error_messages
+        data = cast(dict[str, Any], lavr.validated_data)
         try:
-            token = RefreshToken(refresh_token)
+            token = RefreshToken(data['refresh'])
             token.blacklist()
-            logout(request)
+            logout(request._request)
         except Exception:
-            return Response("Неверный Refresh token", status=400)
+            return Response("Неверный Refresh token", status=403)
         return Response("Выход успешен", status=200)
 
 
@@ -386,32 +384,29 @@ class MyUserView(generics.RetrieveAPIView):
 
 # --------------------------
 
-from redis import Redis
 
-redis = Redis(db=1)
+class TempGetCodesList(views.APIView):
 
-
-@extend_schema(responses={}, request={})
-class TempGetCodesList(generics.GenericAPIView):
-
+    @lru_cache(1)
     @staticmethod
-    def get(*args, **kw) -> Response:
-        result = redis.lrange("sms_list", 0, -1)
+    def get_redis():
+        return Redis()
+
+    @extend_schema(responses={}, request={})
+    def get(self, *args, **kw) -> Response:
+        redis = self.get_redis()
+        result: Any = redis.lrange("sms_list", 0, -1)
         return Response([_.decode() for _ in result][::-1])
 
 
 class FastAuthUser(generics.GenericAPIView):
-    serializer_class = FastAuthUserSerializer
+    class FAUSerializer(serializers.Serializer):
+        id = serializers.CharField(label='ID пользователя')
+    serializer_class = FAUSerializer
 
-    @staticmethod
-    def post(request: Request) -> Response:
-        _login = request.data['login']
-        phone = sub(PHONE_COMPILE, "", _login)
-        phone = int(phone) if phone else -1
-        query = Q(username=_login) | Q(email=_login) | Q(phone=phone)
-        if str.isnumeric(_login):
-            query = query | Q(address=int(_login))
-        user = User.objects.filter(query).first()
+    def post(self, request: Request) -> Response:
+        data = cast(dict[str, Any], request.data)
+        user = User.objects.filter(id=data['id']).first()
         if user is None:
-            return Response("Пользователь не найден", status=400)
-        return release(request, user)
+            return Response("Пользователь не найден", status=404)
+        return release(request._request, user)

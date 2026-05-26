@@ -249,6 +249,9 @@ class Definition(models.Model):
             )
         ]
 
+    def __str__(self) -> str:
+        return f"№{self.port} от {self.device.name}"
+
 
 class DefinitionAddressManager(models.Manager):
     def get_queryset(self):

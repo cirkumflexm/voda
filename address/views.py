@@ -3,7 +3,7 @@ from django.db.models import QuerySet
 from drf_spectacular.utils import extend_schema
 from rest_framework.generics import ListAPIView
 from rest_framework.pagination import LimitOffsetPagination
-from .models import Address 
+from .models import Address
 from .serializers import AddressSerializeList, RequestQuery
 
 
@@ -25,7 +25,9 @@ class AddressView(ListAPIView):
 
     def get_queryset(self) -> QuerySet:
         query = self.request.GET.get('query', '')
-        return self.queryset \
+        queryset = self.queryset \
             .annotate(distance=TrigramDistance('line', query)) \
             .order_by('distance')[:10]
+        print(queryset.query)
+        return queryset
 
