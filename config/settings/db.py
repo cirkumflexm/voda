@@ -13,7 +13,8 @@ DATABASES = {
         'PASSWORD': DB_PASSWORD,
         'HOST': DB_HOST,
         'PORT': DB_PORT,
-        'TIME_ZONE': 'Europe/Moscow'
+        'TIME_ZONE': 'Europe/Moscow',
+        'CONN_MAX_AGE': 60,
     },
     'test': {
         'ENGINE': 'django.db.backends.sqlite3',

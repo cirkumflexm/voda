@@ -130,7 +130,7 @@ class Device(models.Model, metaclass=DeviceMeta):
     def delete_via(self) -> str:
         if self.delete_at is not None:
             via = self.delete_at - timezone.now()
-            return f'через {via.total_seconds() // 3600:.0f} ч.'
+            return f'осталось {via.total_seconds() // 3600:.0f} ч.'
         else:
             return '-'
     delete_via.fget.short_description = 'Автоудаление'  # pyright: ignore[reportOptionalMemberAccess]
