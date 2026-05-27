@@ -29,7 +29,8 @@ class AddOperatorAdminForm(forms.ModelForm):
     )
     email = forms.EmailField(
         label='Email',
-        required=True
+        required=True,
+        help_text='На данный email придет пароль для входа в панель.'
     )
 
     class Meta:
@@ -50,7 +51,7 @@ class AddOperatorAdminForm(forms.ModelForm):
         self.instance.password = make_password(password)
         send_mail(
             subject="Ваш пароль zesu!",
-            message=f'Ваш пароль: {password}',
+            message=f'Логин: {username}\nПароль: {password}',
             from_email=DEFAULT_FROM_EMAIL,
             recipient_list=[data['email']]
         )
