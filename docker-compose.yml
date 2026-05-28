@@ -1,5 +1,5 @@
 
-serivces:
+services:
   redis:
     image: 'redis:8.4-alpine'
     networks:
@@ -19,6 +19,11 @@ serivces:
       - redis
     networks:
       - service
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     command: 'gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 6'
     ports:
       - 8080:8080
@@ -30,6 +35,11 @@ serivces:
       - redis
     networks:
       - service
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
     command: 'celery -A config worker --loglevel=INFO'
 
 networks:
