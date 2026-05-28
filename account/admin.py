@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.http import request
 from phonenumber_field.phonenumber import PhoneNumber
 
 from account.forms import AddOperatorAdminForm

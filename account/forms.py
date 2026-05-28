@@ -4,13 +4,13 @@ from typing import Any
 
 from django import forms
 from django.contrib.auth.hashers import make_password
-from django.utils.crypto import get_random_string
 from django.core.mail import send_mail
+from django.utils.crypto import get_random_string
 from django.utils.text import slugify
 from transliterate import translit
 
-from config.settings.email import DEFAULT_FROM_EMAIL
 from account.models import Operator
+from config.settings.email import DEFAULT_FROM_EMAIL
 
 
 class AddOperatorAdminForm(forms.ModelForm):

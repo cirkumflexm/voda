@@ -1,37 +1,44 @@
 import asyncio
 from base64 import b64encode
 from itertools import product
+from json import loads
 from secrets import token_bytes
 from typing import Iterable, TypedDict, cast
-from json import loads
+
 from asgiref.sync import async_to_sync
 from dal.autocomplete import Select2QuerySetView
-
-from django.shortcuts import redirect
+from django import http
 from django.contrib.postgres.search import TrigramDistance
 from django.db import IntegrityError
 from django.db.models import QuerySet
+from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from drf_spectacular.utils import extend_schema
+from playwright.async_api import async_playwright
 from rest_framework import viewsets
 from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from django import http
 from rest_framework.views import APIView
-from playwright.async_api import async_playwright
 
 from account.models import User
 from address.models import Address
 from config.permissions import OnlyOperatorOrAdmin
 from config.tools import assertion_response
-from device.models import DefinitionAddress, Device, Definition, LogDevice
+from device.models import Definition, DefinitionAddress, Device, LogDevice
+
 from .common import set_ws_status
-from .serializers import DeviceSerializer, AddressSerializeList, \
-        UserGroupDefinitionSerializer, DefinitionSerializerGet, \
-        DefinitionSerializerSet, SwitchSerializer, \
-        SwitchResponseSerializer, ApartmentAddressDefaultQuery
+from .serializers import (
+    AddressSerializeList,
+    ApartmentAddressDefaultQuery,
+    DefinitionSerializerGet,
+    DefinitionSerializerSet,
+    DeviceSerializer,
+    SwitchResponseSerializer,
+    SwitchSerializer,
+    UserGroupDefinitionSerializer,
+)
 
 
 class DeviceAuth(TypedDict):

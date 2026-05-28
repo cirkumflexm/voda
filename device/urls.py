@@ -1,10 +1,17 @@
 
-from django.urls import path, include
+from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import DeviceView, DefinitionView, \
-        Switch, ApartmentAutocomplate, ApartmentAddressDefaultView, \
-        Pdf, handler_auth, handler_event 
+from .views import (
+    ApartmentAddressDefaultView,
+    ApartmentAutocomplate,
+    DefinitionView,
+    DeviceView,
+    Pdf,
+    Switch,
+    handler_auth,
+    handler_event,
+)
 
 router_private = DefaultRouter()
 router_private.register('devices', DeviceView)

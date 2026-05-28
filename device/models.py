@@ -1,24 +1,23 @@
 from collections import defaultdict
 from datetime import timedelta
 from functools import lru_cache
-from secrets import token_hex
-from uuid import uuid4
-from asgiref.sync import sync_to_async
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Self, Optional
-from django.core.validators import MinValueValidator, MaxValueValidator
+from secrets import token_hex
+from string import ascii_letters, ascii_uppercase
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Self
+from uuid import uuid4
+
+from asgiref.sync import sync_to_async
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
-from django.utils import timezone
-from django.utils.text import slugify
 from django.db.models.base import ModelBase
 from django.db.models.functions import Concat
-from transliterate import translit
-from string import ascii_letters, ascii_uppercase
+from django.utils import timezone
 from django.utils.crypto import get_random_string
+from django.utils.text import slugify
+from transliterate import translit
 
 from address.models import Address
-
-
 
 CHARS = "!@#$%^*()" + ascii_uppercase + ascii_letters
 
@@ -124,7 +123,9 @@ class Device(models.Model, metaclass=DeviceMeta):
     @property
     def status(self) -> str:
         return {1: 'не в сети', 0: 'в сети', None: 'отсутвует'}[self.isnot_online]
-    status.fget.short_description = 'Состояние'  # pyright: ignore[reportOptionalMemberAccess]
+
+    if status.fget:
+        status.fget.short_description = 'Состояние'
 
     @property
     def delete_via(self) -> str:
@@ -133,7 +134,9 @@ class Device(models.Model, metaclass=DeviceMeta):
             return f'осталось {via.total_seconds() // 3600:.0f} ч.'
         else:
             return '-'
-    delete_via.fget.short_description = 'Автоудаление'  # pyright: ignore[reportOptionalMemberAccess]
+
+    if delete_via.fget:
+        delete_via.fget.short_description = 'Автоудаление'
 
     class Meta:
         verbose_name = "Устройство (MX210)"
@@ -197,16 +200,10 @@ class Device(models.Model, metaclass=DeviceMeta):
             'address': self.address.line,
             'password': password,
             'username': self.username,
-            'name': self.name,
-            'port_1': str(getattr(self, 'port_1') or '-'),
-            'port_2': str(getattr(self, 'port_2') or '-'),
-            'port_3': str(getattr(self, 'port_3') or '-'),
-            'port_4': str(getattr(self, 'port_4') or '-'),
-            'port_5': str(getattr(self, 'port_5') or '-'),
-            'port_6': str(getattr(self, 'port_6') or '-'),
-            'port_7': str(getattr(self, 'port_7') or '-'),
-            'port_8': str(getattr(self, 'port_8') or '-'),
+            'name': self.name
         }
+        for n in range(1, 9):
+            context[f'port_{n}'] = str(getattr(self, f'port_{n}') or '-')
         return get_pdf_template().format(**context)
 
 

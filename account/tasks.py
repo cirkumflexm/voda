@@ -45,7 +45,7 @@ def get_sms_aero():
 
 @lru_cache(1)
 def get_redis():
-    return Redis()
+    return Redis(host='redis')
 
 
 @app.task(name='send_sms_code', bind=True)

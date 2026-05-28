@@ -1,9 +1,11 @@
 from json import dumps
 from typing import Any
+
 from django.contrib import admin
 from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.utils.html import format_html
+
 from device.forms import DeviceForm
 from device.models import Device, LogDevice
 

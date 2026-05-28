@@ -390,7 +390,7 @@ class TempGetCodesList(views.APIView):
     @lru_cache(1)
     @staticmethod
     def get_redis():
-        return Redis()
+        return Redis('redis')
 
     @extend_schema(responses={}, request={})
     def get(self, *args, **kw) -> Response:

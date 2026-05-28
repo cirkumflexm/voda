@@ -1,10 +1,10 @@
 
 from typing import Any
-from dal.autocomplete import ModelSelect2
 
+from dal.autocomplete import ModelSelect2
 from django import forms
-from django.forms.models import ModelFormMetaclass
 from django.forms import ModelForm
+from django.forms.models import ModelFormMetaclass
 
 from device.models import DefinitionAddress, Device
 

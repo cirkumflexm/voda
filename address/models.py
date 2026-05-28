@@ -1,5 +1,6 @@
 
 from typing import TYPE_CHECKING
+
 from django.contrib.postgres.indexes import GistIndex
 from django.db import models
 

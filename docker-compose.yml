@@ -1,0 +1,36 @@
+
+serivces:
+  redis:
+    image: 'redis:8.4-alpine'
+    networks:
+      - service
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+    restart: "unless-stopped"
+
+  app:
+    build: .
+    image: 'app:latest'
+    restart: 'unless-stopped'
+    depends_on:
+      - redis
+    networks:
+      - service
+    command: 'gunicorn config.wsgi:application --bind 0.0.0.0:8080 --workers 6'
+    ports:
+      - 8080:8080
+
+  celery_worker:
+    image: 'app:latest'
+    restart: 'unless-stopped'
+    depends_on:
+      - redis
+    networks:
+      - service
+    command: 'celery -A config worker --loglevel=INFO'
+
+networks:
+  service: {}

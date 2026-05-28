@@ -1,46 +1,19 @@
-import logging
-from functools import reduce
 
 from celery import Task
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.utils import timezone
 from requests import get
 from requests.auth import HTTPBasicAuth
 
 from config.celery import app
-from config.env import NANOMQ_USERNAME, NANOMQ_PASSWORD
-from device.models import Definition, Device
-
-
-@app.task(bind=True, ignore_result=True, max_retries=None)
-def set_ws_s_task(self: Task) -> None:
-    try:
-        definitions = Definition.objects \
-            .filter(device__func='SET') \
-            .values('device_id', 'device__name') \
-            .annotate(
-                numbers=ArrayAgg('number'),
-                ws_status_list=ArrayAgg('address__user__ws_status')
-            )
-        for definition in definitions:
-            pins = [
-                number for number, status in
-                zip(definition['numbers'], definition['ws_status_list'])
-                if status
-            ]
-            mask = reduce(int.__or__.__call__, pins) if pins else 0
-            event = f"MX210/{definition['device__name']}/SET/DO/MASK"
-            CLIENT.publish(event, mask)
-            logging.info("%s %s", event, bin(mask))
-    finally:
-        self.retry(countdown=15)
+from config.settings.env import NANOMQ_PASSWORD, NANOMQ_USERNAME
+from device.models import Device
 
 
 @app.task(bind=True, ignore_result=True, max_retries=None)
 def undefine_device_delete(self: Task) -> None:
     try:
         Device.objects.filter(
-                isnot_online__isnull=True, 
+                isnot_online__isnull=True,
                 delete_at__lte=timezone.now()
         ).delete()
     finally:
@@ -55,7 +28,7 @@ def nanomq_clients(self: Task) -> None:
                 auth=HTTPBasicAuth(NANOMQ_USERNAME, NANOMQ_PASSWORD)
         )
         usernames = [
-                _['username'] 
+                _['username']
                 for _ in response.json()['data']
                 if _['conn_state'] == 'connected'
         ]
@@ -73,6 +46,5 @@ def nanomq_clients(self: Task) -> None:
         self.retry(countdown=5)
 
 
-# set_ws_s_task.delay()
 undefine_device_delete.delay()
 nanomq_clients.delay()
