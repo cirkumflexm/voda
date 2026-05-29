@@ -21,3 +21,6 @@ COPY --from=builder /app/.venv /app/.venv
 
 ENV PATH="/app/.venv/bin:$PATH"
 
+RUN python manage.py collectstatic -c --noinput
+
+
